@@ -1,0 +1,162 @@
+html, body, div, span, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+abbr, address, cite, code,
+del, dfn, em, img, ins, kbd, q, samp,
+small, strong, sub, sup, var,
+b, i,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section, summary,
+time, mark, audio, video {
+ margin:0;
+ padding:0;
+ border:0;
+ outline:0;
+ vertical-align:baseline;
+ background:transparent;
+}
+
+body {
+ line-height:1;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+article,aside,details,figcaption,figure,
+footer,header,hgroup,menu,nav,section {
+ display:block;
+}
+
+a {
+ margin:0;
+ padding:0;
+ font-size:100%;
+ vertical-align:baseline;
+ background:transparent;
+}
+
+table {
+ border-collapse:collapse;
+ border-spacing:0;
+}
+
+input, select {
+ vertical-align:middle;
+}
+
+ul {
+  list-style: none;
+}
+
+button {
+  padding: 5px 10px 5px 10px;
+  outline: 0;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px 2px;
+  transition: background 0.15s ease-in-out;
+}
+
+button:hover {
+  background: #ddd;
+}
+
+#app {
+  margin-left: 20px;
+  margin-top: 20px;
+}
+
+.react-typeahead {
+  position: relative;
+}
+
+.react-typeahead-input {
+  border: 1px solid #333;
+  border-radius: 2px 2px;
+  margin-right: 15px;
+  outline: none;
+  padding: 5px;
+  width: 360px;
+}
+
+.react-typeahead-results {
+  background: white;
+  border: 1px solid #999;
+  max-height: 300px;
+  overflow-y: scroll;
+  padding: 0;
+  margin-top: 1px;
+  z-index: 100;
+}
+
+.react-typeahead-results::-webkit-scrollbar-track {
+  background: transparent;
+  color: transparent;
+}
+
+.react-typeahead-result {
+  cursor: pointer;
+}
+
+.react-typeahead-result:hover, .react-typeahead-result.focused {
+  background: #d1d1d1;
+}
+
+.react-typeahead-info {
+  padding: 5px 10px 5px 10px;
+}
+
+.react-typeahead-text {
+  color: #999;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 320px;
+}
+
+.legalities-table {
+  margin-top: 20px;
+}
+
+.flex-table {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.flex-cell {
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.flex-cell-left {
+  justify-content: left;
+  width: 50%;
+}
+
+.flex-cell-right {
+  justify-content: left;
+  width: 50%;
+}
+
+.top-spacing {
+  margin-top: 20px;
+}
+
+.gather-deck-name {
+  padding: 10px;
+  text-decoration: underline;
+}
+
+.gather-deck-name:hover {
+  cursor: pointer;
+}

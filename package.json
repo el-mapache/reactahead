@@ -1,0 +1,38 @@
+{
+  "name": "typeahead",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --progress --profile --colors",
+    "watch": "webpack --progress --colors --watch",
+    "test": "mocha --compilers js:babel-register --recursive spec/src"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "classnames": "^2.2.5"
+  },
+  "peerDependencies": {
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2"
+  },
+  "devDependencies": {
+    "babel-core": "^6.21.0",
+    "babel-loader": "^6.2.10",
+    "babel-polyfill": "^6.20.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-react": "^6.16.0",
+    "babel-register": "^6.18.0",
+    "chai": "^3.5.0",
+    "enzyme": "^2.7.0",
+    "mocha": "^3.2.0",
+    "proxyquire": "^1.7.10",
+    "react": "^15.4.2",
+    "react-addons-test-utils": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "sinon": "^1.17.7",
+    "webpack": "^1.14.0"
+  }
+}
