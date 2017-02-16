@@ -85,9 +85,9 @@ describe('<SearchBar /> component', () => {
 
   it('correctly reports its focus state', () => {
     component.simulate('focus', {type: 'focus'});
-    expect(baseProps.onFocus.calledWithExactly(true)).to.be.true;
+    expect(baseProps.onFocus.calledWith(true)).to.be.true;
 
     component.simulate('blur', {type: 'blur'});
-    expect(baseProps.onFocus.calledWithExactly(false)).to.be.true;
+    expect(baseProps.onFocus.calledWith(false)).to.be.true;
   });
 });

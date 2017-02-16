@@ -6,7 +6,7 @@ import proxyquire from 'proxyquire';
 
 
 import KeyCodes from '../../src/utils/key-codes';
-import { filterResultsFallback, defaultSearchName } from '../../src/index';
+import { filterResultsFallback, defaultSearchName } from '../../src/typeahead';
 import {
   expectStateIsTruthy,
   expectStateIsFalsey,
@@ -20,7 +20,7 @@ const Label = () => <div></div>;
 const SearchBar = () => <div></div>;
 const SearchResults = () => <div></div>;
 
-const Fixture = proxyquire('../../src/index', {
+const Fixture = proxyquire('../../src/typeahead', {
   './label': Label,
   './search-bar': SearchBar,
   './search-results': SearchResults
@@ -141,17 +141,6 @@ describe('<Typeahead />', () => {
           expectStateIsFalsey(component, 'showResults');
           component.simulate('focus');
           expectStateIsTruthy(component, 'showResults');
-        });
-      });
-
-      describe('onBlur', () => {
-        it('sets state property `showResults` to false', () => {
-          setState(component, { showResults: true });
-
-          expectStateIsTruthy(component, 'showResults');
-
-          component.simulate('blur');
-          expectStateIsFalsey(component, 'showResults');
         });
       });
 

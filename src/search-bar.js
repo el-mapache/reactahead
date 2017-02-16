@@ -55,7 +55,6 @@ class SearchBar extends React.Component {
     // component, since there is no way to tell when this field should be
     // unfocused when the esc key is pressed
     if (prevProps.isFocused && !this.props.isFocused) {
-      console.log('blur')
       nodeOf(this).blur();
     }
   }
@@ -78,9 +77,9 @@ class SearchBar extends React.Component {
     let type;
 
     if (event.type === 'focus') {
-      this.props.onFocus(true);
+      this.props.onFocus(true, event);
     } else if (event.type === 'blur') {
-      this.props.onFocus(false);
+      this.props.onFocus(false, event);
     }
   }
 

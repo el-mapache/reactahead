@@ -58,7 +58,7 @@ describe('<SearchResults />', () => {
         subcontent: undefined,
         focused: false,
         shouldScrollToView: instance.shouldScrollToView,
-        handleClick: instance.handleClick
+        onSelect: instance.props.onSelect
       };
 
       expect(actualProps).to.deep.equal(expectedProps);

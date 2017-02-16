@@ -6,8 +6,8 @@ import { spy } from 'sinon';
 
 proxyquire.noCallThru();
 
+const selectSpy = spy();
 const scrollSpy = spy();
-const clickSpy = spy();
 const nodeOfSpy = (component) => component;
 
 const SearchResult = proxyquire('../../src/search-result', {
@@ -15,9 +15,9 @@ const SearchResult = proxyquire('../../src/search-result', {
 }).default;
 
 const basicProps = {
+  onSelect: selectSpy,
   shouldScrollToView: scrollSpy,
   content: 'option text',
-  handleClick: clickSpy,
   index: 0,
   focused: false
 };
@@ -42,11 +42,13 @@ describe('<SearchResult />', () => {
       expect(component.hasClass('react-typeahead-result')).to.be.true;
     });
 
-    it('calls the handleClick prop on click', () => {
-      const { handleClick, index } = basicProps;
+    it('calls the onSelect function prop on click', () => {
+      const { onSelect, index } = basicProps;
+      const event = { preventDefault: function() {} };
 
-      component.simulate('click');
-      expect(handleClick.calledWithExactly(index)).to.be.true;
+      component.simulate('click', event);
+
+      expect(onSelect.calledWithExactly(index)).to.be.true;
     });
 
     it('doesnt call `shouldScrollToView` when it unfocused', () => {

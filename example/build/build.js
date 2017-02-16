@@ -106,14 +106,98 @@
 /***/ function(module, exports) {
 
 	// shim for using process in browser
-
 	var process = module.exports = {};
+
+	// cached from whatever global is present so that test runners that stub it
+	// don't break things.  But we need to wrap it in a try catch in case it is
+	// wrapped in strict mode code which doesn't define any globals.  It's inside a
+	// function because try/catches deoptimize in certain engines.
+
+	var cachedSetTimeout;
+	var cachedClearTimeout;
+
+	function defaultSetTimout() {
+	    throw new Error('setTimeout has not been defined');
+	}
+	function defaultClearTimeout() {
+	    throw new Error('clearTimeout has not been defined');
+	}
+	(function () {
+	    try {
+	        if (typeof setTimeout === 'function') {
+	            cachedSetTimeout = setTimeout;
+	        } else {
+	            cachedSetTimeout = defaultSetTimout;
+	        }
+	    } catch (e) {
+	        cachedSetTimeout = defaultSetTimout;
+	    }
+	    try {
+	        if (typeof clearTimeout === 'function') {
+	            cachedClearTimeout = clearTimeout;
+	        } else {
+	            cachedClearTimeout = defaultClearTimeout;
+	        }
+	    } catch (e) {
+	        cachedClearTimeout = defaultClearTimeout;
+	    }
+	})();
+	function runTimeout(fun) {
+	    if (cachedSetTimeout === setTimeout) {
+	        //normal enviroments in sane situations
+	        return setTimeout(fun, 0);
+	    }
+	    // if setTimeout wasn't available but was latter defined
+	    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+	        cachedSetTimeout = setTimeout;
+	        return setTimeout(fun, 0);
+	    }
+	    try {
+	        // when when somebody has screwed with setTimeout but no I.E. maddness
+	        return cachedSetTimeout(fun, 0);
+	    } catch (e) {
+	        try {
+	            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+	            return cachedSetTimeout.call(null, fun, 0);
+	        } catch (e) {
+	            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+	            return cachedSetTimeout.call(this, fun, 0);
+	        }
+	    }
+	}
+	function runClearTimeout(marker) {
+	    if (cachedClearTimeout === clearTimeout) {
+	        //normal enviroments in sane situations
+	        return clearTimeout(marker);
+	    }
+	    // if clearTimeout wasn't available but was latter defined
+	    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+	        cachedClearTimeout = clearTimeout;
+	        return clearTimeout(marker);
+	    }
+	    try {
+	        // when when somebody has screwed with setTimeout but no I.E. maddness
+	        return cachedClearTimeout(marker);
+	    } catch (e) {
+	        try {
+	            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+	            return cachedClearTimeout.call(null, marker);
+	        } catch (e) {
+	            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+	            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+	            return cachedClearTimeout.call(this, marker);
+	        }
+	    }
+	}
 	var queue = [];
 	var draining = false;
 	var currentQueue;
 	var queueIndex = -1;
 
 	function cleanUpNextTick() {
+	    if (!draining || !currentQueue) {
+	        return;
+	    }
 	    draining = false;
 	    if (currentQueue.length) {
 	        queue = currentQueue.concat(queue);
@@ -129,7 +213,7 @@
 	    if (draining) {
 	        return;
 	    }
-	    var timeout = setTimeout(cleanUpNextTick);
+	    var timeout = runTimeout(cleanUpNextTick);
 	    draining = true;
 
 	    var len = queue.length;
@@ -137,14 +221,16 @@
 	        currentQueue = queue;
 	        queue = [];
 	        while (++queueIndex < len) {
-	            currentQueue[queueIndex].run();
+	            if (currentQueue) {
+	                currentQueue[queueIndex].run();
+	            }
 	        }
 	        queueIndex = -1;
 	        len = queue.length;
 	    }
 	    currentQueue = null;
 	    draining = false;
-	    clearTimeout(timeout);
+	    runClearTimeout(timeout);
 	}
 
 	process.nextTick = function (fun) {
@@ -156,7 +242,7 @@
 	    }
 	    queue.push(new Item(fun, args));
 	    if (queue.length === 1 && !draining) {
-	        setTimeout(drainQueue, 0);
+	        runTimeout(drainQueue);
 	    }
 	};
 
@@ -189,7 +275,6 @@
 	    throw new Error('process.binding is not supported');
 	};
 
-	// TODO(shtylman)
 	process.cwd = function () {
 	    return '/';
 	};
@@ -445,9 +530,16 @@
 /* 11 */
 /***/ function(module, exports) {
 
+	/*
+	object-assign
+	(c) Sindre Sorhus
+	@license MIT
+	*/
+
 	'use strict';
 	/* eslint-disable no-unused-vars */
 
+	var getOwnPropertySymbols = Object.getOwnPropertySymbols;
 	var hasOwnProperty = Object.prototype.hasOwnProperty;
 	var propIsEnumerable = Object.prototype.propertyIsEnumerable;
 
@@ -468,7 +560,7 @@
 			// Detect buggy property enumeration order in older V8 versions.
 
 			// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-			var test1 = new String('abc'); // eslint-disable-line
+			var test1 = new String('abc'); // eslint-disable-line no-new-wrappers
 			test1[5] = 'de';
 			if (Object.getOwnPropertyNames(test1)[0] === '5') {
 				return false;
@@ -496,7 +588,7 @@
 			}
 
 			return true;
-		} catch (e) {
+		} catch (err) {
 			// We don't expect any of the above to throw, but better to be safe.
 			return false;
 		}
@@ -516,8 +608,8 @@
 				}
 			}
 
-			if (Object.getOwnPropertySymbols) {
-				symbols = Object.getOwnPropertySymbols(from);
+			if (getOwnPropertySymbols) {
+				symbols = getOwnPropertySymbols(from);
 				for (var i = 0; i < symbols.length; i++) {
 					if (propIsEnumerable.call(from, symbols[i])) {
 						to[symbols[i]] = from[symbols[i]];
@@ -671,7 +763,7 @@
 	      }
 	    }
 	    // We reached the end of the DOM children without finding an ID match.
-	    true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Unable to find element with ID %s.', childID) : _prodInvariant('32', childID) : void 0;
+	     true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Unable to find element with ID %s.', childID) : _prodInvariant('32', childID) : void 0;
 	  }
 	  inst._flags |= Flags.hasCachedChildNodes;
 	}
@@ -11857,7 +11949,7 @@
 	        return ReactNodeTypes.HOST;
 	      }
 	    }
-	    true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Unexpected node: %s', node) : _prodInvariant('26', node) : void 0;
+	     true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Unexpected node: %s', node) : _prodInvariant('26', node) : void 0;
 	  }
 	};
 
@@ -12167,7 +12259,7 @@
 	        }
 	      }
 	      info += getDeclarationErrorAddendum(element._owner);
-	      true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: %s.%s', type == null ? type : typeof type === 'undefined' ? 'undefined' : _typeof(type), info) : _prodInvariant('130', type == null ? type : typeof type === 'undefined' ? 'undefined' : _typeof(type), info) : void 0;
+	       true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: %s.%s', type == null ? type : typeof type === 'undefined' ? 'undefined' : _typeof(type), info) : _prodInvariant('130', type == null ? type : typeof type === 'undefined' ? 'undefined' : _typeof(type), info) : void 0;
 	    }
 
 	    // Special case string values
@@ -12189,7 +12281,7 @@
 	  } else if (typeof node === 'string' || typeof node === 'number') {
 	    instance = ReactHostComponent.createInstanceForText(node);
 	  } else {
-	    true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Encountered invalid React node of type %s', typeof node === 'undefined' ? 'undefined' : _typeof(node)) : _prodInvariant('131', typeof node === 'undefined' ? 'undefined' : _typeof(node)) : void 0;
+	     true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Encountered invalid React node of type %s', typeof node === 'undefined' ? 'undefined' : _typeof(node)) : _prodInvariant('131', typeof node === 'undefined' ? 'undefined' : _typeof(node)) : void 0;
 	  }
 
 	  if (process.env.NODE_ENV !== 'production') {
@@ -12480,7 +12572,7 @@
 	        }
 	      }
 	      var childrenString = String(children);
-	      true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Objects are not valid as a React child (found: %s).%s', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : _prodInvariant('31', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : void 0;
+	       true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Objects are not valid as a React child (found: %s).%s', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : _prodInvariant('31', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : void 0;
 	    }
 	  }
 
@@ -21705,7 +21797,7 @@
 	         * take advantage of React's reconciliation for styling and <title>
 	         * management. So we just document it and throw in dangerous cases.
 	         */
-	        true ? process.env.NODE_ENV !== 'production' ? invariant(false, '<%s> tried to unmount. Because of cross-browser quirks it is impossible to unmount some top-level components (eg <html>, <head>, and <body>) reliably and efficiently. To fix this, have a single top-level component that never unmounts render these elements.', this._tag) : _prodInvariant('66', this._tag) : void 0;
+	         true ? process.env.NODE_ENV !== 'production' ? invariant(false, '<%s> tried to unmount. Because of cross-browser quirks it is impossible to unmount some top-level components (eg <html>, <head>, and <body>) reliably and efficiently. To fix this, have a single top-level component that never unmounts render these elements.', this._tag) : _prodInvariant('66', this._tag) : void 0;
 	        break;
 	    }
 
@@ -24448,7 +24540,7 @@
 	      ReactChildReconciler.unmountChildren(prevChildren, false);
 	      for (var name in prevChildren) {
 	        if (prevChildren.hasOwnProperty(name)) {
-	          true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'updateTextContent called on non-empty component.') : _prodInvariant('118') : void 0;
+	           true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'updateTextContent called on non-empty component.') : _prodInvariant('118') : void 0;
 	        }
 	      }
 	      // Set new text content.
@@ -24468,7 +24560,7 @@
 	      ReactChildReconciler.unmountChildren(prevChildren, false);
 	      for (var name in prevChildren) {
 	        if (prevChildren.hasOwnProperty(name)) {
-	          true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'updateTextContent called on non-empty component.') : _prodInvariant('118') : void 0;
+	           true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'updateTextContent called on non-empty component.') : _prodInvariant('118') : void 0;
 	        }
 	      }
 	      var updates = [makeSetMarkup(nextMarkup)];
@@ -26800,9 +26892,9 @@
 	  }
 
 	  if (typeof componentOrElement.render === 'function') {
-	    true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'findDOMNode was called on an unmounted component.') : _prodInvariant('44') : void 0;
+	     true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'findDOMNode was called on an unmounted component.') : _prodInvariant('44') : void 0;
 	  } else {
-	    true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Element appears to be neither ReactComponent nor DOMNode (keys: %s)', Object.keys(componentOrElement)) : _prodInvariant('45', Object.keys(componentOrElement)) : void 0;
+	     true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Element appears to be neither ReactComponent nor DOMNode (keys: %s)', Object.keys(componentOrElement)) : _prodInvariant('45', Object.keys(componentOrElement)) : void 0;
 	  }
 	}
 
@@ -29364,7 +29456,7 @@
 	        }
 	      }
 	      var childrenString = String(children);
-	      true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Objects are not valid as a React child (found: %s).%s', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : _prodInvariant('31', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : void 0;
+	       true ? process.env.NODE_ENV !== 'production' ? invariant(false, 'Objects are not valid as a React child (found: %s).%s', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : _prodInvariant('31', childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString, addendum) : void 0;
 	    }
 	  }
 
@@ -29426,7 +29518,7 @@
 	  var iteratorSymbol = $Symbol.iterator || "@@iterator";
 	  var toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag";
 
-	  var inModule = (false ? "undefined" : _typeof(module)) === "object";
+	  var inModule = ( false ? "undefined" : _typeof(module)) === "object";
 	  var runtime = global.regeneratorRuntime;
 	  if (runtime) {
 	    if (inModule) {
@@ -30052,7 +30144,7 @@
 	// object, this seems to be the most reliable technique that does not
 	// use indirect eval (which violates Content Security Policy).
 	(typeof global === "undefined" ? "undefined" : _typeof(global)) === "object" ? global : (typeof window === "undefined" ? "undefined" : _typeof(window)) === "object" ? window : (typeof self === "undefined" ? "undefined" : _typeof(self)) === "object" ? self : undefined);
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(485)(module), __webpack_require__(2)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(486)(module), __webpack_require__(2)))
 
 /***/ },
 /* 477 */
@@ -30063,358 +30155,18 @@
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-	exports.defaultSearchName = exports.filterResultsFallback = undefined;
 
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	var _typeahead = __webpack_require__(482);
 
-	var _react = __webpack_require__(66);
+	var _typeahead2 = _interopRequireDefault(_typeahead);
 
-	var _react2 = _interopRequireDefault(_react);
+	var _respondsToClick = __webpack_require__(487);
 
-	var _nodeOf = __webpack_require__(92);
-
-	var _nodeOf2 = _interopRequireDefault(_nodeOf);
-
-	var _keyCodes = __webpack_require__(483);
-
-	var _keyCodes2 = _interopRequireDefault(_keyCodes);
-
-	var _label = __webpack_require__(478);
-
-	var _label2 = _interopRequireDefault(_label);
-
-	var _searchBar = __webpack_require__(479);
-
-	var _searchBar2 = _interopRequireDefault(_searchBar);
-
-	var _searchResults = __webpack_require__(481);
-
-	var _searchResults2 = _interopRequireDefault(_searchResults);
-
-	var _genericFilter = __webpack_require__(482);
-
-	var _genericFilter2 = _interopRequireDefault(_genericFilter);
+	var _respondsToClick2 = _interopRequireDefault(_respondsToClick);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-	/**
-	 * TODO
-	 * add a tiny triangle!
-	 * add a tiny 'x' to clear the selection text
-	 * add a badge with an x maybe, for easy delecting
-	 * search value probably needs to live on top level
-	 * add hidden field to enable form submission, although
-	   it doesnt really matter if js is disabled...
-	 * need to make all labels configurable I guess
-	 * add 'no results' placeholder
-	 * add 'type to search' help text
-	 * get this into its own repo with css to be included
-	 * windowed results, only load and render what is visible in the 'window' (
-	   based on its height and the height of all the items in the list
-	 )
-	 */
-
-	var propTypes = {
-	  elements: _react2.default.PropTypes.array,
-	  // Callback function to run when item is selected from the list
-	  onSelect: _react2.default.PropTypes.func,
-	  // Callback to run when the search input field is updated
-	  onChange: _react2.default.PropTypes.func,
-	  // Optional function to filter dataset based on search query. Can also be
-	  // combined with fromCache: false to allow a parent component to execute an
-	  // API call to dynamically fetch results.
-	  //
-	  // ALSO CONTROLS
-	  // Should the component depend on a cached list of results when displaying
-	  // elements to the user. Defaults to 'true'. Typically, one would set this to
-	  // false when using this component to display a list of results pulled
-	  // dynamically via API.
-	  filterBy: _react2.default.PropTypes.func,
-	  // Whether or not the list of element is visible. If unused,
-	  // delegates this property to internal state
-	  visible: _react2.default.PropTypes.bool,
-	  // Set whether or not the typeahead input should be focused when the component mounts
-	  autofocus: _react2.default.PropTypes.bool
-	};
-
-	var defaultProps = {
-	  elements: []
-	};
-
-	var filterResultsFallback = 'No results match that query.';
-	var defaultSearchName = 'search';
-
-	var Typeahead = function (_React$Component) {
-	  _inherits(Typeahead, _React$Component);
-
-	  function Typeahead(props) {
-	    _classCallCheck(this, Typeahead);
-
-	    var _this = _possibleConstructorReturn(this, (Typeahead.__proto__ || Object.getPrototypeOf(Typeahead)).call(this, props));
-
-	    var elements = props.elements,
-	        visible = props.visible;
-
-
-	    _this.state = {
-	      focusedIndex: null,
-	      inputFocused: false,
-	      selected: [],
-	      showResults: !!visible,
-	      elementCache: _this.shouldUseCache() ? elements.slice(0) : null,
-	      resultsListWidth: 0
-	    };
-
-	    _this.handleKeyInput = _this.handleKeyInput.bind(_this);
-	    _this.checkKeyCode = _this.checkKeyCode.bind(_this);
-	    _this.setResultFocus = _this.setResultFocus.bind(_this);
-	    _this.setResultsListWidth = _this.setResultsListWidth.bind(_this);
-	    _this.showResults = _this.showResults.bind(_this);
-	    _this.hideResults = _this.hideResults.bind(_this);
-	    _this.handleInputFocus = _this.handleInputFocus.bind(_this);
-	    _this.unfocusComponent = _this.unfocusComponent.bind(_this);
-	    _this.handleSelect = _this.handleSelect.bind(_this);
-	    return _this;
-	  }
-
-	  _createClass(Typeahead, [{
-	    key: 'componentWillReceiveProps',
-	    value: function componentWillReceiveProps(nextProps) {
-	      if (!nextProps.elements.length) {
-	        this.hideResults();
-	      }
-	    }
-	  }, {
-	    key: 'checkKeyCode',
-	    value: function checkKeyCode(event) {
-	      var keyCode = event.keyCode;
-
-
-	      switch (keyCode) {
-	        case _keyCodes2.default.ESC:
-	          this.unfocusComponent();
-	          break;
-	        case _keyCodes2.default.UP:
-	          event.preventDefault();
-	          this.setResultFocus(-1);
-	          break;
-	        case _keyCodes2.default.DOWN:
-	          event.preventDefault();
-	          this.setResultFocus(1);
-	          break;
-	      }
-	    }
-	  }, {
-	    key: 'setResultsListWidth',
-	    value: function setResultsListWidth(width) {
-	      this.setState({
-	        resultsListWidth: width
-	      });
-	    }
-
-	    /**
-	     * set the index of the next item to be focused
-	     * @param {Number} direction Positive or negative integer indicating next focused item
-	     */
-
-	  }, {
-	    key: 'setResultFocus',
-	    value: function setResultFocus(direction) {
-	      // How many results available to move through
-	      var resultsLength = this.getElementsForDisplay().length;
-
-	      // which search result, if any, in the dropdown list is currently focused
-	      var currentFocalIndex = this.state.focusedIndex;
-
-	      // if the sign bit is 1, direction was negative and user is paging up
-	      var pagingUp = direction >>> 31;
-
-	      // search result being moved to
-	      var nextFocalIndex = void 0;
-
-	      // Either nothing to focus or only a single element to select
-	      if (!resultsLength) return;
-
-	      if (resultsLength === 1) {
-	        this.setState({
-	          focusedIndex: 0
-	        });
-
-	        return;
-	      }
-
-	      if (currentFocalIndex === null) {
-	        nextFocalIndex = pagingUp ? resultsLength - 1 : 0;
-	      } else if (pagingUp) {
-	        nextFocalIndex = !currentFocalIndex ? resultsLength - 1 : currentFocalIndex + direction;
-	      } else {
-	        // are we on the last list item?
-	        nextFocalIndex = currentFocalIndex === resultsLength - 1 ? 0 : currentFocalIndex + direction;
-	      }
-
-	      this.setState({
-	        focusedIndex: nextFocalIndex
-	      });
-	    }
-	  }, {
-	    key: 'hideResults',
-	    value: function hideResults() {
-	      this.setState({
-	        showResults: false
-	      });
-	    }
-	  }, {
-	    key: 'handleKeyInput',
-	    value: function handleKeyInput(value) {
-	      // !!TODO!!
-	      // filterBy is a poorly named property that actually indicates that the user
-	      // is providing some function that will execute an async request to some
-	      // external service for filtered search results.
-	      // However, that filter function is still expected to pass new elements down..
-	      // which might not be a great idea?
-	      //
-	      // I think that i can remove fromCache, and just depends on filterBy or loadAsync or
-	      // whatever I call it, and just depend on that prop to control the type of
-	      // select.
-	      // Think about this!
-	      var _props = this.props,
-	          filterBy = _props.filterBy,
-	          elements = _props.elements;
-
-
-	      if (!filterBy) {
-	        this.setState({
-	          elementCache: this.normalizeFilteredResults(value, elements, 'name'),
-	          showResults: true
-	        });
-	      } else {
-	        filterBy(value);
-	      }
-	    }
-	  }, {
-	    key: 'normalizeFilteredResults',
-	    value: function normalizeFilteredResults(value, elements, key) {
-	      var filtered = (0, _genericFilter2.default)(value, elements, key);
-
-	      return filtered.length && filtered || [filterResultsFallback];
-	    }
-	  }, {
-	    key: 'shouldUseCache',
-	    value: function shouldUseCache() {
-	      var filterBy = this.props.filterBy;
-
-	      return typeof filterBy === 'undefined' ? true : !!filterBy;
-	    }
-	  }, {
-	    key: 'getElementsForDisplay',
-	    value: function getElementsForDisplay() {
-	      return this.shouldUseCache() ? this.state.elementCache : this.props.elements;
-	    }
-	  }, {
-	    key: 'showResults',
-	    value: function showResults() {
-	      if (!this.getElementsForDisplay().length) {
-	        return;
-	      }
-
-	      this.setState({
-	        showResults: true
-	      });
-	    }
-	  }, {
-	    key: 'handleInputFocus',
-	    value: function handleInputFocus(focused) {
-	      this.setState({
-	        inputFocused: focused
-	      });
-	    }
-	  }, {
-	    key: 'handleSelect',
-	    value: function handleSelect(index) {
-	      var onSelect = this.props.onSelect;
-
-	      var item = this.getElementsForDisplay()[index];
-
-	      this.setState({
-	        selected: [item].concat(this.state.selected.slice(0))
-	      }, function () {
-	        onSelect && onSelect(item, index);
-	      });
-	    }
-	  }, {
-	    key: 'unfocusComponent',
-	    value: function unfocusComponent() {
-	      this.setState({
-	        inputFocused: false,
-	        showResults: false
-	      });
-	    }
-	  }, {
-	    key: 'render',
-	    value: function render() {
-	      var _props2 = this.props,
-	          elements = _props2.elements,
-	          autofocus = _props2.autofocus;
-	      var state = this.state,
-	          handleKeyInput = this.handleKeyInput;
-
-
-	      return _react2.default.createElement(
-	        'div',
-	        {
-	          onKeyDown: this.checkKeyCode,
-	          onFocus: this.showResults,
-	          onBlur: this.hideResults
-	        },
-	        this.state.selected.map(function (item, index) {
-	          return _react2.default.createElement(
-	            'p',
-	            { key: index },
-	            item
-	          );
-	        }),
-	        _react2.default.createElement(_label2.default, {
-	          fieldName: this.props.fieldName || defaultSearchName,
-	          labelText: this.props.labelText
-	        }),
-	        _react2.default.createElement(_searchBar2.default, {
-	          name: this.props.fieldName || defaultSearchName,
-	          onFocus: this.handleInputFocus,
-	          onBlur: this.handleInputFocus,
-	          isFocused: state.inputFocused,
-	          doAutoFocus: autofocus,
-	          onKeyInput: handleKeyInput,
-	          reportWidth: this.setResultsListWidth
-	        }),
-	        _react2.default.createElement(_searchResults2.default, {
-	          elements: this.getElementsForDisplay(),
-	          visible: state.showResults,
-	          width: state.resultsListWidth,
-	          focusedIndex: state.focusedIndex,
-	          onSelect: this.handleSelect
-	        })
-	      );
-	    }
-	  }]);
-
-	  return Typeahead;
-	}(_react2.default.Component);
-
-	;
-
-	Typeahead.propTypes = propTypes;
-	Typeahead.defaultProps = defaultProps;
-
-	// Export for ease of testing
-	exports.filterResultsFallback = filterResultsFallback;
-	exports.defaultSearchName = defaultSearchName;
-	exports.default = Typeahead;
+	exports.default = (0, _respondsToClick2.default)(_typeahead2.default);
 
 /***/ },
 /* 478 */
@@ -30479,7 +30231,7 @@
 
 	var _nodeOf2 = _interopRequireDefault(_nodeOf);
 
-	var _scryWidthOfElement = __webpack_require__(484);
+	var _scryWidthOfElement = __webpack_require__(485);
 
 	var _scryWidthOfElement2 = _interopRequireDefault(_scryWidthOfElement);
 
@@ -30553,7 +30305,6 @@
 	      // component, since there is no way to tell when this field should be
 	      // unfocused when the esc key is pressed
 	      if (prevProps.isFocused && !this.props.isFocused) {
-	        console.log('blur');
 	        (0, _nodeOf2.default)(this).blur();
 	      }
 	    }
@@ -30582,9 +30333,9 @@
 	      var type = void 0;
 
 	      if (event.type === 'focus') {
-	        this.props.onFocus(true);
+	        this.props.onFocus(true, event);
 	      } else if (event.type === 'blur') {
-	        this.props.onFocus(false);
+	        this.props.onFocus(false, event);
 	      }
 	    }
 	  }, {
@@ -30701,7 +30452,8 @@
 	    }
 	  }, {
 	    key: 'handleClick',
-	    value: function handleClick() {
+	    value: function handleClick(event) {
+	      event.preventDefault();
 	      this.props.onSelect(this.props.index);
 	    }
 	  }, {
@@ -30914,6 +30666,402 @@
 
 /***/ },
 /* 482 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.defaultSearchName = exports.filterResultsFallback = undefined;
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+	var _react = __webpack_require__(66);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _nodeOf = __webpack_require__(92);
+
+	var _nodeOf2 = _interopRequireDefault(_nodeOf);
+
+	var _keyCodes = __webpack_require__(484);
+
+	var _keyCodes2 = _interopRequireDefault(_keyCodes);
+
+	var _label = __webpack_require__(478);
+
+	var _label2 = _interopRequireDefault(_label);
+
+	var _searchBar = __webpack_require__(479);
+
+	var _searchBar2 = _interopRequireDefault(_searchBar);
+
+	var _searchResults = __webpack_require__(481);
+
+	var _searchResults2 = _interopRequireDefault(_searchResults);
+
+	var _genericFilter = __webpack_require__(483);
+
+	var _genericFilter2 = _interopRequireDefault(_genericFilter);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	/**
+	 * TODO
+	 * users shouldn't be able to select the same thing twice
+	 * add a tiny triangle!
+	 * add a tiny 'x' to clear the selection text
+	 * add a badge with an x maybe, for easy delecting
+	 * search value probably needs to live on top level
+	 * add hidden field to enable form submission, although
+	   it doesnt really matter if js is disabled...
+	 * need to make all labels configurable I guess
+	 * add 'no results' placeholder
+	 * add 'type to search' help text
+	 * get this into its own repo with css to be included
+	 * windowed results, only load and render what is visible in the 'window' (
+	   based on its height and the height of all the items in the list
+	 )
+	 */
+
+	var propTypes = {
+	  elements: _react2.default.PropTypes.array,
+	  // Callback function to run when item is selected from the list
+	  onSelect: _react2.default.PropTypes.func,
+	  // Callback to run when the search input field is updated
+	  onChange: _react2.default.PropTypes.func,
+	  // Optional function to filter dataset based on search query. Can also be
+	  // combined with fromCache: false to allow a parent component to execute an
+	  // API call to dynamically fetch results.
+	  //
+	  // ALSO CONTROLS
+	  // Should the component depend on a cached list of results when displaying
+	  // elements to the user. Defaults to 'true'. Typically, one would set this to
+	  // false when using this component to display a list of results pulled
+	  // dynamically via API.
+	  filterBy: _react2.default.PropTypes.func,
+	  // Whether or not the list of element is visible. If unused,
+	  // delegates this property to internal state
+	  visible: _react2.default.PropTypes.bool,
+	  // Set whether or not the typeahead input should be focused when the component mounts
+	  autofocus: _react2.default.PropTypes.bool
+	};
+
+	var defaultProps = {
+	  elements: []
+	};
+
+	var filterResultsFallback = 'No results match that query.';
+	var defaultSearchName = 'search';
+
+	var Typeahead = function (_React$Component) {
+	  _inherits(Typeahead, _React$Component);
+
+	  function Typeahead(props) {
+	    _classCallCheck(this, Typeahead);
+
+	    var _this = _possibleConstructorReturn(this, (Typeahead.__proto__ || Object.getPrototypeOf(Typeahead)).call(this, props));
+
+	    var elements = props.elements,
+	        visible = props.visible;
+
+
+	    _this.state = {
+	      focusedIndex: null,
+	      inputFocused: false,
+	      selected: [],
+	      showResults: !!visible,
+	      elementCache: _this.shouldUseCache() ? elements.slice(0) : null,
+	      resultsListWidth: 0
+	    };
+
+	    _this.handleKeyInput = _this.handleKeyInput.bind(_this);
+	    _this.checkKeyCode = _this.checkKeyCode.bind(_this);
+	    _this.setResultFocus = _this.setResultFocus.bind(_this);
+	    _this.setResultsListWidth = _this.setResultsListWidth.bind(_this);
+	    _this.showResults = _this.showResults.bind(_this);
+	    _this.hideResults = _this.hideResults.bind(_this);
+	    _this.handleInputFocus = _this.handleInputFocus.bind(_this);
+	    _this.unfocusComponent = _this.unfocusComponent.bind(_this);
+	    _this.handleSelect = _this.handleSelect.bind(_this);
+	    return _this;
+	  }
+
+	  _createClass(Typeahead, [{
+	    key: 'componentDidMount',
+	    value: function componentDidMount() {
+	      var _this2 = this;
+
+	      window.addEventListener('click', function (event) {
+	        var findNextParent = function findNextParent(node) {
+	          return node.parentNode;
+	        };
+
+	        var stop = 10;
+	        var count = 0;
+	        var next = event.target;
+
+	        while (next = findNextParent(next)) {
+	          // bail out early, hide the results list
+	          if (count === stop) {
+	            break;
+	          }
+
+	          if (next === (0, _nodeOf2.default)(_this2)) {
+	            // the node emitting the blur event is a child of the parent node
+	            // we don't want to hide the results list
+	            next = null;
+	            return;
+	          } else {
+	            count += 1;
+	          }
+	        }
+
+	        _this2.hideResults();
+	      });
+	    }
+	  }, {
+	    key: 'componentWillReceiveProps',
+	    value: function componentWillReceiveProps(nextProps) {
+	      if (!nextProps.elements.length) {
+	        this.hideResults();
+	      }
+	    }
+	  }, {
+	    key: 'checkKeyCode',
+	    value: function checkKeyCode(event) {
+	      var keyCode = event.keyCode;
+
+
+	      switch (keyCode) {
+	        case _keyCodes2.default.ESC:
+	          this.unfocusComponent();
+	          break;
+	        case _keyCodes2.default.UP:
+	          event.preventDefault();
+	          this.setResultFocus(-1);
+	          break;
+	        case _keyCodes2.default.DOWN:
+	          event.preventDefault();
+	          this.setResultFocus(1);
+	          break;
+	      }
+	    }
+	  }, {
+	    key: 'setResultsListWidth',
+	    value: function setResultsListWidth(width) {
+	      this.setState({
+	        resultsListWidth: width
+	      });
+	    }
+
+	    /**
+	     * set the index of the next item to be focused
+	     * @param {Number} direction Positive or negative integer indicating next focused item
+	     */
+
+	  }, {
+	    key: 'setResultFocus',
+	    value: function setResultFocus(direction) {
+	      // How many results available to move through
+	      var resultsLength = this.getElementsForDisplay().length;
+
+	      // which search result, if any, in the dropdown list is currently focused
+	      var currentFocalIndex = this.state.focusedIndex;
+
+	      // if the sign bit is 1, direction was negative and user is paging up
+	      var pagingUp = direction >>> 31;
+
+	      // search result being moved to
+	      var nextFocalIndex = void 0;
+
+	      // Either nothing to focus or only a single element to select
+	      if (!resultsLength) return;
+
+	      if (resultsLength === 1) {
+	        this.setState({
+	          focusedIndex: 0
+	        });
+
+	        return;
+	      }
+
+	      if (currentFocalIndex === null) {
+	        nextFocalIndex = pagingUp ? resultsLength - 1 : 0;
+	      } else if (pagingUp) {
+	        nextFocalIndex = !currentFocalIndex ? resultsLength - 1 : currentFocalIndex + direction;
+	      } else {
+	        // are we on the last list item?
+	        nextFocalIndex = currentFocalIndex === resultsLength - 1 ? 0 : currentFocalIndex + direction;
+	      }
+
+	      this.setState({
+	        focusedIndex: nextFocalIndex
+	      });
+	    }
+	  }, {
+	    key: 'hideResults',
+	    value: function hideResults() {
+	      this.setState({
+	        showResults: false
+	      });
+	    }
+	  }, {
+	    key: 'handleKeyInput',
+	    value: function handleKeyInput(value) {
+	      // !!TODO!!
+	      // filterBy is a poorly named property that actually indicates that the user
+	      // is providing some function that will execute an async request to some
+	      // external service for filtered search results.
+	      // However, that filter function is still expected to pass new elements down..
+	      // which might not be a great idea?
+	      //
+	      // I think that i can remove fromCache, and just depends on filterBy or loadAsync or
+	      // whatever I call it, and just depend on that prop to control the type of
+	      // select.
+	      // Think about this!
+	      var _props = this.props,
+	          filterBy = _props.filterBy,
+	          elements = _props.elements;
+
+
+	      if (!filterBy) {
+	        this.setState({
+	          elementCache: this.normalizeFilteredResults(value, elements, 'name'),
+	          showResults: true
+	        });
+	      } else {
+	        filterBy(value);
+	      }
+	    }
+	  }, {
+	    key: 'normalizeFilteredResults',
+	    value: function normalizeFilteredResults(value, elements, key) {
+	      var filtered = (0, _genericFilter2.default)(value, elements, key);
+
+	      return filtered.length && filtered || [filterResultsFallback];
+	    }
+	  }, {
+	    key: 'shouldUseCache',
+	    value: function shouldUseCache() {
+	      var filterBy = this.props.filterBy;
+
+	      return typeof filterBy === 'undefined' ? true : !!filterBy;
+	    }
+	  }, {
+	    key: 'getElementsForDisplay',
+	    value: function getElementsForDisplay() {
+	      return this.shouldUseCache() ? this.state.elementCache : this.props.elements;
+	    }
+	  }, {
+	    key: 'showResults',
+	    value: function showResults(event) {
+	      console.log('show', event && event.nativeEvent);
+	      if (!this.getElementsForDisplay().length) {
+	        return;
+	      }
+
+	      this.setState({
+	        showResults: true
+	      });
+	    }
+	  }, {
+	    key: 'handleInputFocus',
+	    value: function handleInputFocus(focused, event) {
+	      this.setState({
+	        inputFocused: focused
+	      });
+	    }
+	  }, {
+	    key: 'handleSelect',
+	    value: function handleSelect(index) {
+	      var onSelect = this.props.onSelect;
+
+	      var item = this.getElementsForDisplay()[index];
+
+	      this.setState({
+	        selected: [item].concat(this.state.selected.slice(0))
+	      }, function () {
+	        onSelect && onSelect(item, index);
+	      });
+	    }
+	  }, {
+	    key: 'unfocusComponent',
+	    value: function unfocusComponent() {
+	      this.setState({
+	        inputFocused: false,
+	        showResults: false
+	      });
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      var _props2 = this.props,
+	          elements = _props2.elements,
+	          autofocus = _props2.autofocus;
+	      var state = this.state,
+	          handleKeyInput = this.handleKeyInput;
+
+
+	      return _react2.default.createElement(
+	        'div',
+	        {
+	          onKeyDown: this.checkKeyCode,
+	          onFocus: this.showResults
+	        },
+	        this.state.selected.map(function (item, index) {
+	          return _react2.default.createElement(
+	            'p',
+	            { key: index },
+	            item
+	          );
+	        }),
+	        _react2.default.createElement(_label2.default, {
+	          fieldName: this.props.fieldName || defaultSearchName,
+	          labelText: this.props.labelText
+	        }),
+	        _react2.default.createElement(_searchBar2.default, {
+	          name: this.props.fieldName || defaultSearchName,
+	          onFocus: this.handleInputFocus,
+	          onBlur: this.handleInputFocus,
+	          isFocused: state.inputFocused,
+	          doAutoFocus: autofocus,
+	          onKeyInput: handleKeyInput,
+	          reportWidth: this.setResultsListWidth
+	        }),
+	        _react2.default.createElement(_searchResults2.default, {
+	          elements: this.getElementsForDisplay(),
+	          visible: state.showResults,
+	          width: state.resultsListWidth,
+	          focusedIndex: state.focusedIndex,
+	          onSelect: this.handleSelect
+	        })
+	      );
+	    }
+	  }]);
+
+	  return Typeahead;
+	}(_react2.default.Component);
+
+	;
+
+	Typeahead.propTypes = propTypes;
+	Typeahead.defaultProps = defaultProps;
+
+	// Export for ease of testing
+	exports.filterResultsFallback = filterResultsFallback;
+	exports.defaultSearchName = defaultSearchName;
+	exports.default = Typeahead;
+
+/***/ },
+/* 483 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -30965,7 +31113,7 @@
 	exports.default = defaultFilter;
 
 /***/ },
-/* 483 */
+/* 484 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -30980,7 +31128,7 @@
 	};
 
 /***/ },
-/* 484 */
+/* 485 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -30995,7 +31143,7 @@
 	exports.default = scryWidthOfElement;
 
 /***/ },
-/* 485 */
+/* 486 */
 /***/ function(module, exports) {
 
 	module.exports = function (module) {
@@ -31008,6 +31156,69 @@
 		}
 		return module;
 	};
+
+/***/ },
+/* 487 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+	var _react = __webpack_require__(66);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	function RespondsToClick(Component) {
+	  return function (_React$Component) {
+	    _inherits(_class, _React$Component);
+
+	    function _class(props) {
+	      _classCallCheck(this, _class);
+
+	      var _this = _possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
+
+	      _this.handleClick = _this.handleClick.bind(_this);
+	      return _this;
+	    }
+
+	    _createClass(_class, [{
+	      key: 'componentDidMount',
+	      value: function componentDidMount() {
+	        window.addEventListener('click', this.handleClick);
+	      }
+	    }, {
+	      key: 'componentWillUnmount',
+	      value: function componentWillUnmount() {
+	        window.removeEventListener('click', this.handleClick);
+	      }
+	    }, {
+	      key: 'handleClick',
+	      value: function handleClick() {}
+	    }, {
+	      key: 'render',
+	      value: function render() {
+	        return _react2.default.createElement(Component, this.props);
+	      }
+	    }]);
+
+	    return _class;
+	  }(_react2.default.Component);
+	};
+
+	exports.default = RespondsToClick;
 
 /***/ }
 /******/ ]);

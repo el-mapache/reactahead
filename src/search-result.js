@@ -45,7 +45,8 @@ class SearchResult extends React.Component {
     }
   }
 
-  handleClick() {
+  handleClick(event) {
+    event.preventDefault();
     this.props.onSelect(this.props.index);
   }
 
