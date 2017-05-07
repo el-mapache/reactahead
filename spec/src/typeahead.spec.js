@@ -75,6 +75,16 @@ describe('<Typeahead />', () => {
       expect(component.state('selected')[0]).to.equal('tom');
     });
 
+    it('removes the element from `selected` upon a second select', () => {
+      const instance = component.instance();
+      instance.handleSelect(0);
+      instance.handleSelect(1);
+      instance.handleSelect(0);
+
+      expect(component.state('selected')).to.have.length(1);
+      expect(component.state('selected')[0]).to.equal('dick');
+    });
+
     context('when cache is not set', () => {
       beforeEach(() => {
         component = shallow(<Fixture elements={elements} filterBy={() => {}}/>);
@@ -303,6 +313,7 @@ describe('<Typeahead />', () => {
       const component = shallow(<Fixture />);
       const instance = component.instance();
       const props = {
+        selected: instance.state.selected,
         elements: instance.props.elements,
         visible: instance.state.showResults,
         width: instance.state.resultsListWidth,

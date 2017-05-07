@@ -4,7 +4,7 @@ var webpack = require('webpack');
 module.exports = {
   context: __dirname + '/src',
 
-  target: 'node',
+  target: 'web',
 
   entry: [
     'babel-polyfill',

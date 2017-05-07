@@ -1,6 +1,8 @@
 import React from 'react';
 import nodeOf from './utils/node-of';
 import scryWidthOfElement from './utils/scry-width-of-element';
+import SelectedBadge from './selected-badge';
+import SearchInput from './search-input';
 
 const propTypes = {
   name: React.PropTypes.string.isRequired,
@@ -12,6 +14,11 @@ const propTypes = {
   // Callback that filters current dataset; called each time search input is
   // updated
   onKeyInput: React.PropTypes.func.isRequired,
+  // Callback to flag a selected item to be deselected by the parent typeahead
+  // component
+  onUnselect: React.PropTypes.func.isRequired,
+  query: React.PropTypes.string.isRequired,
+  selected: React.PropTypes.array.isRequired,
   // Internal prop, set by parent component. This component needs to
   // supply its width to the top level typeahead component, so it can
   // pass that width down to the search results component
@@ -23,12 +30,11 @@ class SearchBar extends React.Component {
     super(props)
 
     this.state = {
-      query: ''
+      width: null
     };
 
     this.handleKeyInput = this.handleKeyInput.bind(this);
     this.onWindowResize = this.onWindowResize.bind(this);
-    this.onFocusChange = this.onFocusChange.bind(this);
   }
 
   componentDidMount() {
@@ -42,63 +48,66 @@ class SearchBar extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    if (this.state.query !== nextState.query ||
-      nextProps.isFocused !== this.props.isFocused) {
+    if (this.props.query !== nextProps.query ||
+      nextProps.isFocused !== this.props.isFocused ||
+      nextProps.selected.length !== this.props.selected.length) {
       return true;
     }
 
     return false;
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    // Blur has to get manually called based on new props from the parent
-    // component, since there is no way to tell when this field should be
-    // unfocused when the esc key is pressed
-    if (prevProps.isFocused && !this.props.isFocused) {
-      nodeOf(this).blur();
-    }
-  }
-
   onWindowResize() {
-    this.props.reportWidth(scryWidthOfElement(nodeOf(this)));
-  }
-
-  handleKeyInput(e) {
-    const { onKeyInput } = this.props;
+    const width = scryWidthOfElement(nodeOf(this));
+    this.props.reportWidth(width);
 
     this.setState({
-      query: e.target.value
-    }, () => {
-      onKeyInput(this.state.query);
+      width: width
     });
   }
 
-  onFocusChange(event) {
-    let type;
+  handleKeyInput(e) {
+    this.props.onKeyInput(e.target.value);
+  }
 
-    if (event.type === 'focus') {
-      this.props.onFocus(true, event);
-    } else if (event.type === 'blur') {
-      this.props.onFocus(false, event);
+  mapSelectedItems() {
+    const { selected, onUnselect } = this.props;
+
+    return selected.map((item, index) => {
+      return (
+        <SelectedBadge
+          index={index}
+          item={item}
+          key={index}
+          onClick={this.props.onUnselect}
+        />
+      );
+    });
+  }
+
+  setWidth() {
+    return {
+      width: this.state.width
     }
   }
 
   render() {
-    const { doAutoFocus, name } = this.props;
+    const { doAutoFocus, name, selected } = this.props;
     const { state } = this;
 
     return (
-      <input
-        type="text"
-        name={name}
-        onChange={this.handleKeyInput}
-        value={state.query}
-        className="react-typeahead-input"
-        autoFocus={doAutoFocus}
-        autoComplete="off"
-        onFocus={this.onFocusChange}
-        onBlur={this.onFocusChange}
-      />
+      <div className="clearfix react-typeahead-input" style={ this.setWidth() }>
+        { this.mapSelectedItems() }
+        <SearchInput
+          autoFocus={ doAutoFocus }
+          isFocused={ this.props.isFocused }
+          name={ name }
+          onBlur={ this.props.onFocus }
+          onFocus={ this.props.onFocus }
+          onChange={ this.handleKeyInput }
+          value={ this.props.query }
+        />
+      </div>
     );
   }
 };

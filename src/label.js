@@ -1,7 +1,6 @@
 import React from 'react';
 
 const defaultText = 'Start typing to search';
-
 const propTypes = {
   fieldName: React.PropTypes.string,
   labelText: React.PropTypes.string

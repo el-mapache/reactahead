@@ -59,8 +59,11 @@ class SearchResults extends React.Component {
   }
 
   mapResults(list, focusedIndex) {
-    return list.map((el, index) => {
-      const focused = focusedIndex === index;
+    const { selected } = this.props;
+
+    return list.reduce((memo, el, index) => {
+      const focused = index === focusedIndex;
+
       let content;
       let subcontent;
 
@@ -71,18 +74,20 @@ class SearchResults extends React.Component {
         subcontent = el.text;
       }
 
-      return (
+      memo.push(
         <SearchResult
           key={index}
           index={index}
           content={content}
-          subcontent={subcontent}
           focused={focused}
+          subcontent={subcontent}
           shouldScrollToView={this.shouldScrollToView}
           onSelect={this.props.onSelect}
         />
       );
-    });
+
+      return memo;
+    }, []);
   }
 
   render() {
