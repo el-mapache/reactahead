@@ -1,4 +1,6 @@
 node_modules/
 .DS_Store
-example/build/
 npm-debug.log
+example/build/**/*
+example/npm-debug.log
+example/.DS_Store

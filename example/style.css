@@ -80,7 +80,7 @@ button:hover {
   border-radius: 2px 2px;
   margin-right: 15px;
   outline: none;
-  padding: 5px;
+  padding: 0px 5px 8px 5px;
   width: 360px;
 }
 
@@ -89,7 +89,7 @@ button:hover {
   border: 1px solid #999;
   max-height: 300px;
   overflow-y: scroll;
-  padding: 0;
+  padding: 0px 5px 0px 5px;
   margin-top: 1px;
   z-index: 100;
 }
@@ -152,11 +152,35 @@ button:hover {
   margin-top: 20px;
 }
 
-.gather-deck-name {
-  padding: 10px;
-  text-decoration: underline;
+.clearfix::before, .clearfix::after {
+  content: '';
+  clear: both;
+  display: table;
 }
 
-.gather-deck-name:hover {
+.reactahead-inline-input {
+  border: none;
+  font-size: 1rem;
+  margin-top: 10px;
+  padding-left: 5px;
+}
+
+.reactahead-badge {
+  background: #55669f;
+  border-color: transparent;
+  border-radius: 4px 4px;
+  color: #fff;
   cursor: pointer;
+  float: left;
+  font-size: .75rem;
+  margin-top: 5px;
+  margin-right: 5px;
+}
+
+.reactahead-badge span {
+  margin-left: 10px;
+}
+
+.reactahead-badge:hover {
+  background: #22339f;
 }

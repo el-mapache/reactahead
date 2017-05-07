@@ -16,6 +16,7 @@ const Fixture = proxyquire('../../src/search-results', {
 }).default;
 
 const baseProps = {
+  selected: [],
   elements: ['Stanley', 'Andrei', 'François'],
   onSelect: selectSpy,
   focusedIndex: 1,

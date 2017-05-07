@@ -7,22 +7,30 @@ import SearchResults from './search-results';
 import defaultFilter from './utils/generic-filter';
 
 /**
- * TODO
- * users shouldn't be able to select the same thing twice
- * add a tiny triangle!
- * add a tiny 'x' to clear the selection text
- * add a badge with an x maybe, for easy delecting
- * search value probably needs to live on top level
+ * TODO:
+ *
+ * ENHANCEMENTS:
+ * windowed results, only load and render what is visible in the 'window' (
+     based on its height and the height of all the items in the list
+   )
  * add hidden field to enable form submission, although
    it doesnt really matter if js is disabled...
  * need to make all labels configurable I guess
- * add 'no results' placeholder
  * add 'type to search' help text
  * get this into its own repo with css to be included
- * windowed results, only load and render what is visible in the 'window' (
-   based on its height and the height of all the items in the list
- )
- */
+ *
+ * BUGS:
+ * looks like the scoll into view function is trying to target elements
+   that dont exist, maybe after a search?
+
+ DONE:
+ ✔ * users shouldn't be able to select the same thing twice
+ ✔ * add 'no results' placeholder
+ ✔ * Enter should select the current focused element
+ ✔ * paging trhough elements using arrow keys pages through actual backing elements,
+     not just displayed elements, so user will see focus disappear as combo box tries
+     to select invisble elements`
+*/
 
 const propTypes = {
   elements: React.PropTypes.array,
@@ -40,6 +48,8 @@ const propTypes = {
   // false when using this component to display a list of results pulled
   // dynamically via API.
   filterBy: React.PropTypes.func,
+  // Text to instruct the user how to interact with component
+  helpText: React.PropTypes.string,
   // Whether or not the list of element is visible. If unused,
   // delegates this property to internal state
   visible: React.PropTypes.bool,
@@ -66,7 +76,10 @@ class Typeahead extends React.Component {
       selected: [],
       showResults: !!visible,
       elementCache: this.shouldUseCache() ? elements.slice(0) : null,
-      resultsListWidth: 0
+      resultsListWidth: 0,
+      elementsPerPage: 20,
+      elementsOffset: 0, // every search needs to reset this to 0
+      query: ''
     };
 
     this.handleKeyInput = this.handleKeyInput.bind(this);
@@ -74,47 +87,13 @@ class Typeahead extends React.Component {
     this.setResultFocus = this.setResultFocus.bind(this);
     this.setResultsListWidth = this.setResultsListWidth.bind(this);
     this.showResults = this.showResults.bind(this);
-    this.hideResults = this.hideResults.bind(this);
     this.handleInputFocus = this.handleInputFocus.bind(this);
     this.unfocusComponent = this.unfocusComponent.bind(this);
     this.handleSelect = this.handleSelect.bind(this);
+    this.handleUnselect = this.handleUnselect.bind(this);
+    this.handleClick = this.handleClick.bind(this);
   }
 
-  componentDidMount() {
-    window.addEventListener('click', (event) => {
-      const findNextParent = (node) => {
-        return node.parentNode;
-      };
-
-      const stop = 10;
-      let count = 0;
-      let next = event.target;
-
-      while(next = findNextParent(next)) {
-        // bail out early, hide the results list
-        if (count === stop) {
-          break;
-        }
-
-        if (next === nodeOf(this)) {
-          // the node emitting the blur event is a child of the parent node
-          // we don't want to hide the results list
-          next = null;
-          return;
-        } else {
-          count += 1;
-        }
-      }
-
-      this.hideResults();
-    });
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (!nextProps.elements.length) {
-      this.hideResults();
-    }
-  }
 
   checkKeyCode(event) {
     const { keyCode } = event;
@@ -130,6 +109,14 @@ class Typeahead extends React.Component {
       case KeyCodes.DOWN:
         event.preventDefault();
         this.setResultFocus(1);
+        break;
+      case KeyCodes.ENTER:
+        event.preventDefault();
+
+        if (this.state.focusedIndex !== null) {
+          this.handleSelect(this.state.focusedIndex);
+        }
+
         break;
     }
   }
@@ -182,10 +169,33 @@ class Typeahead extends React.Component {
     });
   }
 
-  hideResults() {
-    this.setState({
-      showResults: false
-    });
+  handleClick(event) {
+    const findNextParent = (node) => {
+      return node.parentNode;
+    };
+
+    const stop = 10;
+    let count = 0;
+    let next = event.target;
+
+    while(next = findNextParent(next)) {
+      // bail out early, hide the results list
+      if (count === stop) {
+        break;
+      }
+
+      if (next === nodeOf(this)) {
+        // the node emitting the blur event is a child of the parent node
+        // we don't want to hide the results list
+        next = null;
+
+        return this.handleInputFocus(true, event);
+      } else {
+        count += 1;
+      }
+    }
+
+    this.unfocusComponent();
   }
 
   handleKeyInput(value) {
@@ -205,7 +215,8 @@ class Typeahead extends React.Component {
     if (!filterBy) {
       this.setState({
         elementCache: this.normalizeFilteredResults(value, elements, 'name'),
-        showResults: true
+        showResults: true,
+        query: value
       });
     } else {
       filterBy(value);
@@ -224,11 +235,15 @@ class Typeahead extends React.Component {
   }
 
   getElementsForDisplay() {
-    return this.shouldUseCache() ? this.state.elementCache : this.props.elements;
+    const { selected } = this.state;
+    const rawElements = this.shouldUseCache() ?
+      this.state.elementCache : this.props.elements;
+
+    return rawElements.filter(el => selected.indexOf(el) === -1);
+    //.slice(this.state.elementsOffset, this.state.elementsPerPage);
   }
 
   showResults(event) {
-    console.log('show', event && event.nativeEvent)
     if (!this.getElementsForDisplay().length) {
       return;
     }
@@ -239,6 +254,10 @@ class Typeahead extends React.Component {
   }
 
   handleInputFocus(focused, event) {
+    if (this.state.inputFocused && focused) {
+      return;
+    }
+
     this.setState({
       inputFocused: focused
     });
@@ -247,11 +266,34 @@ class Typeahead extends React.Component {
   handleSelect(index) {
     const { onSelect } = this.props;
     const item = this.getElementsForDisplay()[index];
+    const maybeItemIndex = this.state.selected.indexOf(item);
+    let nextSelectedList;
+
+    if (maybeItemIndex !== -1) {
+      nextSelectedList = this.state.selected.filter(el => el !== item);
+    } else {
+      nextSelectedList = this.state.selected.slice(0).concat([item]);
+    }
 
     this.setState({
-      selected: [item].concat(this.state.selected.slice(0))
+      selected: nextSelectedList,
+      query: ''
     }, () => {
+      this.setResultFocus(1);
       onSelect && onSelect(item, index);
+    });
+  }
+
+  handleUnselect(index) {
+    const { onUnselect } = this.props;
+    const selectedClone = this.state.selected.slice(0);
+
+    selectedClone.splice(index, 1);
+
+    this.setState({
+      selected: selectedClone
+    }, () => {
+      onUnselect && onUnselect(index);
     });
   }
 
@@ -263,36 +305,38 @@ class Typeahead extends React.Component {
   }
 
   render() {
-    const { elements, autofocus } = this.props;
+    const { autofocus } = this.props;
     const { state, handleKeyInput } = this;
+    const elements = this.getElementsForDisplay();
 
     return (
       <div
-        onKeyDown={this.checkKeyCode}
-        onFocus={this.showResults}
+        onKeyDown={ this.checkKeyCode }
+        onFocus={ this.showResults }
+        onClick={this.handleClick}
       >
-        {this.state.selected.map((item, index) => {
-          return <p key={index}>{item}</p>;
-        })}
         <Label
-          fieldName={this.props.fieldName || defaultSearchName}
-          labelText={this.props.labelText}
+          fieldName={ this.props.fieldName || defaultSearchName }
+          labelText={ this.props.labelText }
         />
         <SearchBar
-          name={this.props.fieldName || defaultSearchName}
-          onFocus={this.handleInputFocus}
-          onBlur={this.handleInputFocus}
-          isFocused={state.inputFocused}
-          doAutoFocus={autofocus}
-          onKeyInput={handleKeyInput}
-          reportWidth={this.setResultsListWidth}
+          name={ this.props.fieldName || defaultSearchName }
+          onFocus={ this.handleInputFocus }
+          onBlur={ this.handleInputFocus }
+          isFocused={ state.inputFocused }
+          doAutoFocus={ autofocus }
+          onKeyInput={ handleKeyInput }
+          selected={ state.selected }
+          reportWidth={ this.setResultsListWidth }
+          onUnselect={this.handleUnselect}
+          query={ this.state.query }
         />
         <SearchResults
-          elements={this.getElementsForDisplay()}
-          visible={state.showResults}
-          width={state.resultsListWidth}
-          focusedIndex={state.focusedIndex}
-          onSelect={this.handleSelect}
+          elements={ elements }
+          visible={ state.showResults }
+          width={ state.resultsListWidth }
+          focusedIndex={ state.focusedIndex }
+          onSelect={ this.handleSelect }
         />
       </div>
     );
