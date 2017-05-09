@@ -20,23 +20,14 @@ import defaultFilter from './utils/generic-filter';
  * get this into its own repo with css to be included
  *
  * BUGS:
- * looks like the scoll into view function is trying to target elements
-   that dont exist, maybe after a search?
-
- DONE:
- ✔ * users shouldn't be able to select the same thing twice
- ✔ * add 'no results' placeholder
- ✔ * Enter should select the current focused element
- ✔ * paging trhough elements using arrow keys pages through actual backing elements,
-     not just displayed elements, so user will see focus disappear as combo box tries
-     to select invisble elements`
+ * User should not be able to select 'no results match that query' fallback
 */
 
 const propTypes = {
   elements: React.PropTypes.array,
-  // Callback function to run when item is selected from the list
+  // Callback when item is selected from the list
   onSelect: React.PropTypes.func,
-  // Callback to run when the search input field is updated
+  // Callback when the search input field is updated
   onChange: React.PropTypes.func,
   // Optional function to filter dataset based on search query. Can also be
   // combined with fromCache: false to allow a parent component to execute an
@@ -94,7 +85,6 @@ class Typeahead extends React.Component {
     this.handleClick = this.handleClick.bind(this);
   }
 
-
   checkKeyCode(event) {
     const { keyCode } = event;
 
@@ -112,7 +102,6 @@ class Typeahead extends React.Component {
         break;
       case KeyCodes.ENTER:
         event.preventDefault();
-
         if (this.state.focusedIndex !== null) {
           this.handleSelect(this.state.focusedIndex);
         }
@@ -185,8 +174,8 @@ class Typeahead extends React.Component {
       }
 
       if (next === nodeOf(this)) {
-        // the node emitting the blur event is a child of the parent node
-        // we don't want to hide the results list
+        // the node emitting the blur event is a child of the parent node,
+        // so we don't want to hide the results list
         next = null;
 
         return this.handleInputFocus(true, event);
@@ -216,7 +205,10 @@ class Typeahead extends React.Component {
       this.setState({
         elementCache: this.normalizeFilteredResults(value, elements, 'name'),
         showResults: true,
-        query: value
+        query: value,
+        focusedIndex: 0
+      }, () => {
+        this.props.onChange && this.props.onChange(value);
       });
     } else {
       filterBy(value);
@@ -240,7 +232,6 @@ class Typeahead extends React.Component {
       this.state.elementCache : this.props.elements;
 
     return rawElements.filter(el => selected.indexOf(el) === -1);
-    //.slice(this.state.elementsOffset, this.state.elementsPerPage);
   }
 
   showResults(event) {
@@ -277,10 +268,10 @@ class Typeahead extends React.Component {
 
     this.setState({
       selected: nextSelectedList,
-      query: ''
     }, () => {
       this.setResultFocus(1);
       onSelect && onSelect(item, index);
+      this.handleKeyInput('');
     });
   }
 
