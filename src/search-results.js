@@ -33,6 +33,8 @@ class SearchResults extends React.Component {
   }
 
   shouldScrollToView(targetNode, index) {
+    if (!targetNode) return;
+
     // The dom node the <SearchResults /> component backs
     const thisNode = nodeOf(this);
 

@@ -17,7 +17,7 @@ class SearchResult extends React.Component {
     this.handleClick = this.handleClick.bind(this);
   }
 
-  componentWillMount() {
+  componentDidMount() {
     this.checkShouldScroll(this.props.focused);
   }
 
