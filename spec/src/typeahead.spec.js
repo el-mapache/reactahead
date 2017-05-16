@@ -3,8 +3,6 @@ import { shallow } from 'enzyme';
 import { expect } from 'chai';
 import { spy } from 'sinon';
 import proxyquire from 'proxyquire';
-
-
 import KeyCodes from '../../src/utils/key-codes';
 import { filterResultsFallback, defaultSearchName } from '../../src/typeahead';
 import {
@@ -13,6 +11,7 @@ import {
   expectStateToBe,
   setState
 } from '../helpers/state-helpers';
+import stubKeyPressEvent from '../helpers/stubs';
 
 proxyquire.noCallThru();
 
@@ -29,7 +28,7 @@ const Fixture = proxyquire('../../src/typeahead', {
 const elements = ['tom', 'dick', 'harry'];
 
 describe('<Typeahead />', () => {
-  it('exists when instantiated, event without props', () => {
+  it('exists as a component', () => {
     expect(shallow(<Fixture />)).to.exist;
   });
 
@@ -46,43 +45,92 @@ describe('<Typeahead />', () => {
       expect(component.find(SearchResults)).to.have.length(1);
     });
 
+    // TODO: should I be reaching into the component to call this?
     it('sets width of results list when <SearchBar/> callback fires', () => {
       component.find(SearchBar).prop('reportWidth')(100);
 
       expectStateToBe(component, 'resultsListWidth', 100);
     });
 
-    it('filters elements when <SearchBar/> reports users input', () => {
-      component.find(SearchBar).prop('onKeyInput')('to');
+    context('filtering search results', () => {
+      it('stores the search query in its own state', () => {
+        const query = 'hello';
+        component.find(SearchBar).prop('onKeyInput')(query);
 
-      expect(component.state('elementCache')).to.deep.equal(['tom']);
+        expectStateToBe(component, 'query', query);
+      });
+
+      it('filters elements when <SearchBar/> reports input', () => {
+        component.find(SearchBar).prop('onKeyInput')('to');
+
+        expect(component.state('elementCache')).to.deep.equal(['tom']);
+      });
+
+      it('sets a default when query doesnt match dataset', () => {
+        component.find(SearchBar).prop('onKeyInput')('zz');
+
+        const filtered = component.state('elementCache')
+
+        expect(filtered).to.have.length(1);
+        expect(filtered).to.deep.equal([filterResultsFallback]);
+      });
     });
 
-    it('sets a default when query doesnt match dataset', () => {
-      component.find(SearchBar).prop('onKeyInput')('zz');
+    context('selecting elements', () => {
+      let instance;
 
-      const filtered = component.state('elementCache')
+      beforeEach(() => {
+        instance = component.instance();
+      });
 
-      expect(filtered).to.have.length(1);
-      expect(filtered).to.deep.equal([filterResultsFallback]);
-    });
+      context('on select', () => {
+        it('updates its selected elements cache', () => {
+          instance.handleSelect(0);
 
-    it('updates its selected elements cache when an item is selected', () => {
-      const instance = component.instance();
-      instance.handleSelect(0);
+          expect(component.state('selected')).to.have.length(1);
+          expect(component.state('selected')[0]).to.equal('tom');
+        });
 
-      expect(component.state('selected')).to.have.length(1);
-      expect(component.state('selected')[0]).to.equal('tom');
-    });
+        it('removes element from the displayed results', () => {
+          instance.handleSelect(0);
+          component.update();
 
-    it('removes the element from `selected` upon a second select', () => {
-      const instance = component.instance();
-      instance.handleSelect(0);
-      instance.handleSelect(1);
-      instance.handleSelect(0);
+          const nextResults = component.find(SearchResults).prop('elements');
 
-      expect(component.state('selected')).to.have.length(1);
-      expect(component.state('selected')[0]).to.equal('dick');
+          expect(nextResults).to.have.length(2);
+          expect(nextResults).to.deep.equal(['dick', 'harry']);
+        });
+
+        it('clears the current search query', () => {
+          component.setState({query: 'tom'});
+          instance.handleSelect(2);
+          component.update();
+
+          expectStateToBe(component, 'query', '');
+        });
+
+        it('sets focusedIndex back to zero', () => {
+          component.setState({ focusedIndex: 1 });
+
+          expectStateToBe(component, 'focusedIndex', 1);
+
+          instance.handleSelect(2);
+          component.update();
+
+          expectStateToBe(component, 'focusedIndex', 0);
+        });
+      });
+
+      context('on unselect', () => {
+        it('removes element from elements cache', () => {
+          instance.handleSelect(0);
+          instance.handleSelect(0);
+          instance.handleUnselect(0);
+
+          expect(component.state('selected')).to.have.length(1);
+          expect(component.state('selected')[0]).to.equal('dick');
+        });
+      });
     });
 
     context('when cache is not set', () => {
@@ -129,11 +177,12 @@ describe('<Typeahead />', () => {
       const component = shallow(<Fixture elements={elements} />);
       const state = component.state();
 
+      expect(state.elementCache).to.deep.equals(elements);
       expect(state.focusedIndex).to.eq(null);
       expect(state.inputFocused).to.eq(false);
-      expect(state.showResults).to.eq(false);
-      expect(state.elementCache).to.deep.equals(elements);
+      expect(state.query).to.equal('');
       expect(state.resultsListWidth).to.eq(0);
+      expect(state.showResults).to.eq(false);
       expect(state.selected).to.have.length(0);
     });
   });
@@ -156,46 +205,62 @@ describe('<Typeahead />', () => {
 
       describe('key bindings', () => {
         it('responds to ESC by losing focus and hiding results list', () => {
+          const escKeyPressEvent = stubKeyPressEvent(KeyCodes.ESC);
+
           component.setState({
             inputFocused: true,
             showResults: true
           });
           component.update();
 
-          component.simulate('keydown', { keyCode: KeyCodes.ESC });
+          component.simulate('keydown', escKeyPressEvent);
+
+          expect(escKeyPressEvent.preventDefault.calledOnce).to.be.true;
           expectStateIsFalsey(component, 'showResults');
           expectStateIsFalsey(component, 'inputFocused');
         });
 
+        it('responds to ENTER by selected the focused element', () => {
+          const downKeyPressEvent = stubKeyPressEvent(KeyCodes.DOWN);
+          const enterKeyPressEvent = stubKeyPressEvent(KeyCodes.ENTER);
+
+          component.setState({
+            inputFocused: true,
+            showResults: true
+          });
+          component.update();
+
+          component.simulate('keydown', downKeyPressEvent);
+          component.simulate('keydown', enterKeyPressEvent);
+
+          expect(enterKeyPressEvent.preventDefault.calledOnce).to.be.true;
+          expect(component.state('selected')[0]).to.eq('tom');
+        });
+
         describe('UP and DOWN arrow keys', () => {
-          let preventDefaultSpy;
-          let event;
+          let upKeyPressEvent;
+          let downKeyPressEvent;
 
           context('when UP is pressed', () => {
             beforeEach(() => {
-              preventDefaultSpy = spy();
-
-              event = {
-                keyCode: KeyCodes.UP,
-                preventDefault: preventDefaultSpy
-              };
+              upKeyPressEvent = stubKeyPressEvent(KeyCodes.UP)
             });
 
             it('prevents the default event behavior', () => {
-              component.simulate('keydown', event);
+              component.simulate('keydown', upKeyPressEvent);
 
-              expect(preventDefaultSpy.calledOnce).to.be.true;
+              expect(upKeyPressEvent.preventDefault.calledOnce).to.be.true;
             });
 
             it('moves to the last element when focusedIndex is null', () => {
-              component.simulate('keydown', event);
+              component.simulate('keydown', upKeyPressEvent);
 
               expectStateToBe(component, 'focusedIndex', elements.length - 1);
             });
 
             it('moves to the last index when focused index is 0', () => {
               setState(component, { focusedIndex: 0 });
-              component.simulate('keydown', event);
+              component.simulate('keydown', upKeyPressEvent);
 
               expectStateToBe(component, 'focusedIndex', elements.length - 1);
             });
@@ -203,41 +268,36 @@ describe('<Typeahead />', () => {
             it('moves to the previous element otherwise', () => {
               component.setState({ focusedIndex: 1 });
               component.update();
-              component.simulate('keydown', event);
+              component.simulate('keydown', upKeyPressEvent);
               expectStateToBe(component, 'focusedIndex', 0);
             });
           });
 
           context('when DOWN is pressed', () => {
             beforeEach(() => {
-              preventDefaultSpy = spy();
-
-              event = {
-                keyCode: KeyCodes.DOWN,
-                preventDefault: preventDefaultSpy
-              };
+              downKeyPressEvent = stubKeyPressEvent(KeyCodes.DOWN);
             });
 
             it('prevents the default event behavior', () => {
-              component.simulate('keydown', event);
-              expect(preventDefaultSpy.calledOnce).to.be.true;
+              component.simulate('keydown', downKeyPressEvent);
+              expect(downKeyPressEvent.preventDefault.calledOnce).to.be.true;
             });
 
             it('moves to the first index when focusedIndex is null', () => {
-              component.simulate('keydown', event);
+              component.simulate('keydown', downKeyPressEvent);
               expectStateToBe(component, 'focusedIndex', 0);
             });
 
             it('moves to the first index from the last', () => {
               setState(component, { focusedIndex: elements.length -1 });
-              component.simulate('keydown', event);
+              component.simulate('keydown', downKeyPressEvent);
 
               expectStateToBe(component, 'focusedIndex', 0);
             });
 
             it('moves to the next index from the previous', () => {
               setState(component, { focusedIndex: 0 });
-              component.simulate('keydown', event);
+              component.simulate('keydown', downKeyPressEvent);
               expectStateToBe(component, 'focusedIndex', 1);
             });
           });
@@ -255,6 +315,7 @@ describe('<Typeahead />', () => {
       describe('onFocus, onBlur', () => {
         it('leaves showResults unaltered', () => {
           expect(component.state('showResults')).to.be.false;
+
           component.simulate('focus');
           expect(component.state('showResults')).to.be.false;
 
@@ -283,8 +344,8 @@ describe('<Typeahead />', () => {
     });
   });
 
-  describe('props', () => {
-    context('<Label/ > child component', () => {
+  describe('child component props', () => {
+    context('<Label/ >', () => {
       it('passes `fieldName` and `labelText` props when supplied', () => {
         const props = { fieldName: 'search', labelText: 'type here!' };
         const component = shallow(<Fixture {...props} />);
@@ -293,32 +354,34 @@ describe('<Typeahead />', () => {
       });
     });
 
-    context('<SearchBar /> child component', () => {
+    context('<SearchBar />', () => {
       const component = shallow(<Fixture />);
       const instance = component.instance();
       const props = {
-        name: defaultSearchName,
-        onFocus: instance.handleInputFocus,
-        onBlur: instance.handleInputFocus,
-        isFocused: instance.state.inputFocused,
         doAutoFocus: instance.props.autofocus,
+        isFocused: instance.state.inputFocused,
+        name: defaultSearchName,
+        onBlur: instance.handleInputFocus,
+        onFocus: instance.handleInputFocus,
         onKeyInput: instance.handleKeyInput,
-        reportWidth: instance.setResultsListWidth
+        onUnselect: instance.handleUnselect,
+        query: instance.state.query,
+        reportWidth: instance.setResultsListWidth,
+        selected: instance.state.selected
       };
 
       expect(component.find(SearchBar).props()).to.deep.equal(props);
     });
 
-    context('<SearchResults /> child component', () => {
+    context('<SearchResults />', () => {
       const component = shallow(<Fixture />);
       const instance = component.instance();
       const props = {
-        selected: instance.state.selected,
         elements: instance.props.elements,
-        visible: instance.state.showResults,
-        width: instance.state.resultsListWidth,
         focusedIndex: instance.state.focusedIndex,
-        onSelect: instance.handleSelect
+        onSelect: instance.handleSelect,
+        visible: instance.state.showResults,
+        width: instance.state.resultsListWidth
       };
 
       expect(component.find(SearchResults).props()).to.deep.equals(props);
