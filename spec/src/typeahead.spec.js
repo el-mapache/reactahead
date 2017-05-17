@@ -163,12 +163,38 @@ describe('<Typeahead />', () => {
         expect(component.find(SearchResults).prop('elements')).to.deep.equal([filterResultsFallback]);
       });
 
-      it('calls set state', () => {
+      it('calls setState', () => {
         const stateSpy = spy(component.instance(), 'setState');
         component.find(SearchBar).prop('onKeyInput')('zz');
 
         expect(stateSpy.called).to.be.true;
       });
+    });
+  });
+
+  describe('prop callback hooks', () => {
+    const onSelectCallbackSpy = spy();
+    const onChangeCallbackSpy = spy();
+    const fixture =
+      <Fixture elements={elements}
+        onSelect={onSelectCallbackSpy}
+        onChange={onChangeCallbackSpy} />;
+    const component = shallow(fixture);
+    const instance = component.instance();
+
+    it('passes selected item and index to onSelect', () => {
+      instance.handleSelect(0);
+
+      expect(onSelectCallbackSpy.calledOnce).to.be.true;
+      expect(onSelectCallbackSpy.getCall(0).args).to.deep.equal(['tom', 0])
+    });
+
+    it('passes the updated search query to onChange', () => {
+      const query = 'El Topo';
+      instance.handleKeyInput(query);
+
+      expect(onChangeCallbackSpy.calledOnce).to.be.true;
+      expect(onChangeCallbackSpy.getCall(0).args).to.deep.equal([query]);
     });
   });
 

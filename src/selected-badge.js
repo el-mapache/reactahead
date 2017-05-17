@@ -2,8 +2,8 @@ import React from 'react';
 
 const propTypes = {
   onClick: React.PropTypes.func.isRequired,
-  index: React.PropTypes.number,
-  item: React.PropTypes.string
+  index: React.PropTypes.number.isRequired,
+  item: React.PropTypes.string.isRequired
 };
 
 class SelectedBadge extends React.Component {
@@ -12,7 +12,7 @@ class SelectedBadge extends React.Component {
     this.handleDeselect = this.handleDeselect.bind(this);
   }
 
-  handleDeselect(event) {
+  handleDeselect() {
     const { index, onClick } = this.props;
 
     onClick(index);

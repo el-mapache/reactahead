@@ -206,7 +206,9 @@ class Typeahead extends React.Component {
         query: value,
         focusedIndex: 0
       }, () => {
-        this.props.onChange && this.props.onChange(value);
+        if (this.state.query) {
+          this.props.onChange && this.props.onChange(value);
+        }
       });
     } else {
       filterBy(value);
