@@ -2,12 +2,12 @@ import React from 'react';
 import nodeOf from './utils/node-of';
 
 const propTypes = {
+  content: React.PropTypes.string,
   focused: React.PropTypes.bool,
   index: React.PropTypes.number,
-  content: React.PropTypes.string,
+  onSelect: React.PropTypes.func.isRequired,
   subcontent: React.PropTypes.string,
-  shouldScrollToView: React.PropTypes.func.isRequired,
-  onSelect: React.PropTypes.func.isRequired
+  shouldScrollToView: React.PropTypes.func.isRequired
 };
 
 class SearchResult extends React.Component {

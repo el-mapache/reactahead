@@ -12,10 +12,6 @@ class SearchInput extends React.Component {
     this.onFocusChange = this.onFocusChange.bind(this);
   }
 
-  shouldComponentUpdate(nextProps, nextState) {
-    return true;
-  }
-
   componentDidUpdate(prevProps, prevState) {
     // .blur() must be manually called based on new props from the parent
     // component, as there is no way to tell when this field should be
