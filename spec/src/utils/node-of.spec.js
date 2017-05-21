@@ -11,7 +11,7 @@ const fixture = proxyquire('../../../src/utils/node-of', {
 }).default;
 
 describe('#nodeOf', () => {
-  it('calls proxies calls to findDOMNode', () => {
+  it('proxies calls to findDOMNode', () => {
     fixture();
     expect(theSpy.calledOnce).to.be.true
   });

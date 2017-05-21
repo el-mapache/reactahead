@@ -116,14 +116,4 @@ describe('<SearchBar /> component', () => {
     expect(nodeOfStub.calledOnce).to.be.true;
     expect(nodeOfStub.calledWithExactly(instance)).to.be.true;
   });
-
-  xit('correctly reports its focus state', () => {
-    const input = component.find(SearchInput);
-
-    triggerChildEvent(input, 'onFocus', { type: 'focus' });
-    expect(focusSpy.onFocus.calledWith(true)).to.be.true;
-
-    triggerChildEvent(input, 'onBlur', { type: 'blur' });
-    expect(focusSpy.onFocus.calledWith(false)).to.be.true;
-  });
 });
