@@ -62,15 +62,13 @@ class Typeahead extends React.Component {
     const { elements, visible } = props;
 
     this.state = {
+      elementCache: this.shouldUseCache() ? elements.slice(0) : null,
       focusedIndex: null,
       inputFocused: false,
-      selected: [],
-      showResults: !!visible,
-      elementCache: this.shouldUseCache() ? elements.slice(0) : null,
+      query: '',
       resultsListWidth: 0,
-      elementsPerPage: 20,
-      elementsOffset: 0, // every search needs to reset this to 0
-      query: ''
+      showResults: !!visible,
+      selected: []
     };
 
     this.handleKeyInput = this.handleKeyInput.bind(this);
@@ -90,6 +88,7 @@ class Typeahead extends React.Component {
 
     switch(keyCode) {
       case KeyCodes.ESC:
+        event.preventDefault();
         this.unfocusComponent();
         break;
       case KeyCodes.UP:
@@ -204,11 +203,12 @@ class Typeahead extends React.Component {
     if (!filterBy) {
       this.setState({
         elementCache: this.normalizeFilteredResults(value, elements, 'name'),
-        showResults: true,
         query: value,
         focusedIndex: 0
       }, () => {
-        this.props.onChange && this.props.onChange(value);
+        if (this.state.query) {
+          this.props.onChange && this.props.onChange(value);
+        }
       });
     } else {
       filterBy(value);
@@ -269,7 +269,6 @@ class Typeahead extends React.Component {
     this.setState({
       selected: nextSelectedList,
     }, () => {
-      this.setResultFocus(1);
       onSelect && onSelect(item, index);
       this.handleKeyInput('');
     });
@@ -311,23 +310,23 @@ class Typeahead extends React.Component {
           labelText={ this.props.labelText }
         />
         <SearchBar
+          doAutoFocus={ autofocus }
+          isFocused={ state.inputFocused }
           name={ this.props.fieldName || defaultSearchName }
           onFocus={ this.handleInputFocus }
           onBlur={ this.handleInputFocus }
-          isFocused={ state.inputFocused }
-          doAutoFocus={ autofocus }
           onKeyInput={ handleKeyInput }
-          selected={ state.selected }
-          reportWidth={ this.setResultsListWidth }
           onUnselect={this.handleUnselect}
           query={ this.state.query }
+          reportWidth={ this.setResultsListWidth }
+          selected={ state.selected }
         />
         <SearchResults
           elements={ elements }
-          visible={ state.showResults }
-          width={ state.resultsListWidth }
           focusedIndex={ state.focusedIndex }
           onSelect={ this.handleSelect }
+          visible={ state.showResults }
+          width={ state.resultsListWidth }
         />
       </div>
     );

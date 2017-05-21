@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack --progress --profile --colors",
     "watch": "webpack --progress --colors --watch",
-    "test": "mocha --compilers js:babel-register --recursive spec/src"
+    "test": "node_modules/.bin/mocha --compilers js:babel-register"
   },
   "keywords": [],
   "author": "",

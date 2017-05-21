@@ -6,10 +6,10 @@ const noop = function() {};
 
 const propTypes = {
   elements: React.PropTypes.array.isRequired,
-  visible: React.PropTypes.bool,
   focusedIndex: React.PropTypes.number,
-  width: React.PropTypes.number,
-  onSelect: React.PropTypes.func
+  onSelect: React.PropTypes.func,
+  visible: React.PropTypes.bool,
+  width: React.PropTypes.number
 };
 
 const defaultProps = {

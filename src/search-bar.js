@@ -5,12 +5,12 @@ import SelectedBadge from './selected-badge';
 import SearchInput from './search-input';
 
 const propTypes = {
-  name: React.PropTypes.string.isRequired,
-  onFocus: React.PropTypes.func.isRequired,
-  onBlur: React.PropTypes.func,
-  isFocused: React.PropTypes.bool,
   // Set whether or not the typeahead input should be focused when the component mounts
   doAutoFocus: React.PropTypes.bool,
+  isFocused: React.PropTypes.bool,
+  name: React.PropTypes.string.isRequired,
+  onBlur: React.PropTypes.func,
+  onFocus: React.PropTypes.func.isRequired,
   // Callback that filters current dataset; called each time search input is
   // updated
   onKeyInput: React.PropTypes.func.isRequired,
@@ -18,11 +18,11 @@ const propTypes = {
   // component
   onUnselect: React.PropTypes.func.isRequired,
   query: React.PropTypes.string.isRequired,
-  selected: React.PropTypes.array.isRequired,
-  // Internal prop, set by parent component. This component needs to
-  // supply its width to the top level typeahead component, so it can
-  // pass that width down to the search results component
-  reportWidth: React.PropTypes.func.isRequired
+  // This component needs to supply its width to the top level typeahead
+  // component. The width is needed by the SearchResults component to
+  // render correctly.
+  reportWidth: React.PropTypes.func.isRequired,
+  selected: React.PropTypes.array.isRequired
 };
 
 class SearchBar extends React.Component {
@@ -66,23 +66,21 @@ class SearchBar extends React.Component {
     });
   }
 
-  handleKeyInput(e) {
-    this.props.onKeyInput(e.target.value);
+  handleKeyInput(event) {
+    this.props.onKeyInput(event.target.value);
   }
 
   mapSelectedItems() {
     const { selected, onUnselect } = this.props;
 
-    return selected.map((item, index) => {
-      return (
-        <SelectedBadge
-          index={index}
-          item={item}
-          key={index}
-          onClick={this.props.onUnselect}
-        />
-      );
-    });
+    return selected.map((item, index) =>
+      <SelectedBadge
+        index={index}
+        item={item}
+        key={index}
+        onClick={this.props.onUnselect}
+      />
+    );
   }
 
   setWidth() {
