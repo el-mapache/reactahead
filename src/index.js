@@ -1,3 +1,4 @@
 import Typeahead from './typeahead';
+import DetectClick from './components/detect-click';
 
-export default Typeahead;
+export default DetectClick(Typeahead);

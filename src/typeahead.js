@@ -80,7 +80,14 @@ class Typeahead extends React.Component {
     this.unfocusComponent = this.unfocusComponent.bind(this);
     this.handleSelect = this.handleSelect.bind(this);
     this.handleUnselect = this.handleUnselect.bind(this);
-    this.handleClick = this.handleClick.bind(this);
+  }
+
+  componentWillReceiveProps(nextProps, nextState) {
+    const { clickOutside } = nextProps;
+
+    if (typeof clickOutside !== null) {
+      clickOutside ? this.unfocusComponent() : this.handleInputFocus(true)
+    }
   }
 
   checkKeyCode(event) {
@@ -157,35 +164,6 @@ class Typeahead extends React.Component {
     });
   }
 
-  handleClick(event) {
-    const findNextParent = (node) => {
-      return node.parentNode;
-    };
-
-    const stop = 10;
-    let count = 0;
-    let next = event.target;
-
-    while(next = findNextParent(next)) {
-      // bail out early, hide the results list
-      if (count === stop) {
-        break;
-      }
-
-      if (next === nodeOf(this)) {
-        // the node emitting the blur event is a child of the parent node,
-        // so we don't want to hide the results list
-        next = null;
-
-        return this.handleInputFocus(true, event);
-      } else {
-        count += 1;
-      }
-    }
-
-    this.unfocusComponent();
-  }
-
   handleKeyInput(value) {
     // !!TODO!!
     // filterBy is a poorly named property that actually indicates that the user
@@ -244,7 +222,7 @@ class Typeahead extends React.Component {
     });
   }
 
-  handleInputFocus(focused, event) {
+  handleInputFocus(focused) {
     if (this.state.inputFocused && focused) {
       return;
     }
@@ -301,9 +279,8 @@ class Typeahead extends React.Component {
 
     return (
       <div
-        onKeyDown={ this.checkKeyCode }
         onFocus={ this.showResults }
-        onClick={this.handleClick}
+        onKeyDown={ this.checkKeyCode }
       >
         <Label
           fieldName={ this.props.fieldName || defaultSearchName }
