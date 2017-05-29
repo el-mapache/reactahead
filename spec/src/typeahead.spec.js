@@ -387,7 +387,7 @@ describe('<Typeahead />', () => {
         doAutoFocus: instance.props.autofocus,
         isFocused: instance.state.inputFocused,
         name: defaultSearchName,
-        onBlur: instance.handleInputFocus,
+        onBlur: instance.handleUnfocus,
         onFocus: instance.handleInputFocus,
         onKeyInput: instance.handleKeyInput,
         onUnselect: instance.handleUnselect,

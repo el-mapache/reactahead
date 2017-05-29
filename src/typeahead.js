@@ -77,10 +77,18 @@ class Typeahead extends React.Component {
     this.setResultsListWidth = this.setResultsListWidth.bind(this);
     this.showResults = this.showResults.bind(this);
     this.handleInputFocus = this.handleInputFocus.bind(this);
-    this.unfocusComponent = this.unfocusComponent.bind(this);
+    this.handleUnfocus = this.handleUnfocus.bind(this);
     this.handleSelect = this.handleSelect.bind(this);
     this.handleUnselect = this.handleUnselect.bind(this);
     this.handleClick = this.handleClick.bind(this);
+  }
+
+  componentDidMount() {
+    document.addEventListener('click', this.handleClick);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('click', this.handleClick);
   }
 
   checkKeyCode(event) {
@@ -89,7 +97,7 @@ class Typeahead extends React.Component {
     switch(keyCode) {
       case KeyCodes.ESC:
         event.preventDefault();
-        this.unfocusComponent();
+        this.handleUnfocus();
         break;
       case KeyCodes.UP:
         event.preventDefault();
@@ -183,7 +191,7 @@ class Typeahead extends React.Component {
       }
     }
 
-    this.unfocusComponent();
+    this.handleUnfocus();
   }
 
   handleKeyInput(value) {
@@ -287,10 +295,11 @@ class Typeahead extends React.Component {
     });
   }
 
-  unfocusComponent() {
+  handleUnfocus() {
     this.setState({
       inputFocused: false,
-      showResults: false
+      showResults: false,
+      query: ''
     });
   }
 
@@ -303,7 +312,6 @@ class Typeahead extends React.Component {
       <div
         onKeyDown={ this.checkKeyCode }
         onFocus={ this.showResults }
-        onClick={this.handleClick}
       >
         <Label
           fieldName={ this.props.fieldName || defaultSearchName }
@@ -314,7 +322,7 @@ class Typeahead extends React.Component {
           isFocused={ state.inputFocused }
           name={ this.props.fieldName || defaultSearchName }
           onFocus={ this.handleInputFocus }
-          onBlur={ this.handleInputFocus }
+          onBlur={ this.handleUnfocus }
           onKeyInput={ handleKeyInput }
           onUnselect={this.handleUnselect}
           query={ this.state.query }
