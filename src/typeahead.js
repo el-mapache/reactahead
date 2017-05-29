@@ -99,6 +99,10 @@ class Typeahead extends React.Component {
         event.preventDefault();
         this.handleUnfocus();
         break;
+      case KeyCodes.TAB:
+        event.preventDefault();
+        this.handleUnfocus();
+        break;
       case KeyCodes.UP:
         event.preventDefault();
         this.setResultFocus(-1);
@@ -185,7 +189,7 @@ class Typeahead extends React.Component {
         // so we don't want to hide the results list
         next = null;
 
-        return this.handleInputFocus(true, event);
+        return this.handleInputFocus();
       } else {
         count += 1;
       }
@@ -252,13 +256,9 @@ class Typeahead extends React.Component {
     });
   }
 
-  handleInputFocus(focused, event) {
-    if (this.state.inputFocused && focused) {
-      return;
-    }
-
+  handleInputFocus() {
     this.setState({
-      inputFocused: focused
+      inputFocused: true
     });
   }
 
@@ -322,7 +322,6 @@ class Typeahead extends React.Component {
           isFocused={ state.inputFocused }
           name={ this.props.fieldName || defaultSearchName }
           onFocus={ this.handleInputFocus }
-          onBlur={ this.handleUnfocus }
           onKeyInput={ handleKeyInput }
           onUnselect={this.handleUnselect}
           query={ this.state.query }

@@ -100,7 +100,6 @@ class SearchBar extends React.Component {
           autoFocus={ doAutoFocus }
           isFocused={ this.props.isFocused }
           name={ name }
-          onBlur={ this.props.onFocus }
           onFocus={ this.props.onFocus }
           onChange={ this.handleKeyInput }
           value={ this.props.query }

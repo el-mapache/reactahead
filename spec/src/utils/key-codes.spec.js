@@ -6,5 +6,7 @@ describe('KeyCodes', () => {
     expect(KeyCodes.ESC).to.equal(27);
     expect(KeyCodes.DOWN).to.equal(40);
     expect(KeyCodes.UP).to.equal(38);
+    expect(KeyCodes.TAB).to.equal(9);
+    expect(KeyCodes.ENTER).to.equal(13);
   });
 });
