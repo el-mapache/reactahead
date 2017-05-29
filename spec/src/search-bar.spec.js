@@ -76,7 +76,6 @@ describe('<SearchBar /> component', () => {
         value: baseProps.query,
         autoFocus: baseProps.doAutoFocus,
         onFocus: baseProps.onFocus,
-        onBlur: baseProps.onFocus,
         isFocused: baseProps.isFocused
       };
 

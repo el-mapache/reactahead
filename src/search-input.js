@@ -14,6 +14,8 @@ class SearchInput extends React.Component {
   constructor(props) {
     super(props);
 
+    this.state = { focused: false }
+
     this.onFocusChange = this.onFocusChange.bind(this);
   }
 
@@ -28,13 +30,9 @@ class SearchInput extends React.Component {
     }
   }
 
-  onFocusChange(event) {
-    let type;
-
-    if (event.type === 'focus') {
-      this.props.onFocus(true, event);
-    } else if (event.type === 'blur') {
-      this.props.onFocus(false, event);
+  onFocusChange() {
+    if (!this.props.isFocused) {
+      this.props.onFocus();
     }
   }
 
@@ -45,7 +43,6 @@ class SearchInput extends React.Component {
         autoFocus={ this.props.doAutoFocus }
         className="reactahead-inline-input"
         name={ this.props.name }
-        onBlur={ this.onFocusChange }
         onChange={ this.props.onChange }
         onFocus={ this.onFocusChange }
         type="text"

@@ -17,7 +17,6 @@ const defaultProps = {
   doAutoFocus: false,
   isFocused: false,
   name: 'my-input',
-  onBlur: focusSpy,
   onChange: changeSpy,
   onFocus: focusSpy,
   value: ''
@@ -42,7 +41,6 @@ describe('<SearchInput />', () => {
       className: 'reactahead-inline-input',
       name: defaultProps.name,
       onChange: defaultProps.onChange,
-      onBlur: instance.onFocusChange,
       onFocus:instance.onFocusChange,
       type: 'text',
       value: defaultProps.value
@@ -59,10 +57,7 @@ describe('<SearchInput />', () => {
 
   it('correctly reports its focus state', () => {
     component.simulate('focus', { type: 'focus' });
-    expect(focusSpy.calledWith(true)).to.be.true;
-
-    component.simulate('blur', { type: 'blur' });
-    expect(focusSpy.calledWith(false)).to.be.true;
+    expect(focusSpy.calledOnce).to.be.true;
   });
 
   // pending until I figure out the correct way to test this

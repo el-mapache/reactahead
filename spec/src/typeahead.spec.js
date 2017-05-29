@@ -230,15 +230,27 @@ describe('<Typeahead />', () => {
       });
 
       describe('key bindings', () => {
-        it('responds to ESC by losing focus and hiding results list', () => {
-          const escKeyPressEvent = stubKeyPressEvent(KeyCodes.ESC);
-
+        beforeEach(() => {
           component.setState({
             inputFocused: true,
             showResults: true
           });
           component.update();
+        });
 
+        it('responds to TAB by losing focus', () => {
+          const tabKeyPressEvent = stubKeyPressEvent(KeyCodes.TAB);
+          const unfocusSpy = spy(component.instance(), 'handleUnfocus');
+          component.simulate('keydown', tabKeyPressEvent);
+
+          expect(tabKeyPressEvent.preventDefault.calledOnce).to.be.true;
+          expectStateIsFalsey(component, 'showResults');
+          expectStateIsFalsey(component, 'inputFocused');
+          expect(unfocusSpy.calledOnce).to.be.true;
+        });
+
+        it('responds to ESC by losing focus and hiding results list', () => {
+          const escKeyPressEvent = stubKeyPressEvent(KeyCodes.ESC);
           component.simulate('keydown', escKeyPressEvent);
 
           expect(escKeyPressEvent.preventDefault.calledOnce).to.be.true;
@@ -249,13 +261,6 @@ describe('<Typeahead />', () => {
         it('responds to ENTER by selected the focused element', () => {
           const downKeyPressEvent = stubKeyPressEvent(KeyCodes.DOWN);
           const enterKeyPressEvent = stubKeyPressEvent(KeyCodes.ENTER);
-
-          component.setState({
-            inputFocused: true,
-            showResults: true
-          });
-          component.update();
-
           component.simulate('keydown', downKeyPressEvent);
           component.simulate('keydown', enterKeyPressEvent);
 
@@ -387,7 +392,6 @@ describe('<Typeahead />', () => {
         doAutoFocus: instance.props.autofocus,
         isFocused: instance.state.inputFocused,
         name: defaultSearchName,
-        onBlur: instance.handleUnfocus,
         onFocus: instance.handleInputFocus,
         onKeyInput: instance.handleKeyInput,
         onUnselect: instance.handleUnselect,
