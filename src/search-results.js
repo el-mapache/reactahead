@@ -92,14 +92,18 @@ class SearchResults extends React.Component {
     }, []);
   }
 
+  loading() {
+    return <li>LOADING!!!!</li>;
+  }
+
   render() {
-    const { elements, focusedIndex, visible } = this.props;
+    const { elements, focusedIndex } = this.props;
 
     return (
       <ul className="react-typeahead-results" style={this.getStyle()}>
-        {this.mapResults(elements, focusedIndex)}
+        { this.props.loading ? this.loading() : this.mapResults(elements, focusedIndex) }
       </ul>
-    );
+    )
   }
 }
 

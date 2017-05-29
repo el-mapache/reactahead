@@ -29,16 +29,10 @@ const propTypes = {
   onSelect: React.PropTypes.func,
   // Callback when the search input field is updated
   onChange: React.PropTypes.func,
-  // Optional function to filter dataset based on search query. Can also be
-  // combined with fromCache: false to allow a parent component to execute an
-  // API call to dynamically fetch results.
-  //
-  // ALSO CONTROLS
-  // Should the component depend on a cached list of results when displaying
-  // elements to the user. Defaults to 'true'. Typically, one would set this to
-  // false when using this component to display a list of results pulled
-  // dynamically via API.
-  filterBy: React.PropTypes.func,
+  // Filter results via API call. The search should be executed on the
+  // server and elements found passed back to the component. Useful for
+  // very large datasets you dont want to load/filter in the browser
+  requestAsync: React.PropTypes.func,
   // Text to instruct the user how to interact with component
   helpText: React.PropTypes.string,
   // Whether or not the list of element is visible. If unused,
@@ -112,7 +106,6 @@ class Typeahead extends React.Component {
         if (this.state.focusedIndex !== null) {
           this.handleSelect(this.state.focusedIndex);
         }
-
         break;
     }
   }
@@ -195,32 +188,33 @@ class Typeahead extends React.Component {
   }
 
   handleKeyInput(value) {
-    // !!TODO!!
-    // filterBy is a poorly named property that actually indicates that the user
-    // is providing some function that will execute an async request to some
-    // external service for filtered search results.
-    // However, that filter function is still expected to pass new elements down..
-    // which might not be a great idea?
-    //
-    // I think that i can remove fromCache, and just depends on filterBy or loadAsync or
-    // whatever I call it, and just depend on that prop to control the type of
-    // select.
-    // Think about this!
-    const { filterBy, elements } = this.props;
+    const { requestAsync, elements } = this.props;
+    let nextState = {
+      query: value,
+      focusedIndex: 0
+    };
 
-    if (!filterBy) {
-      this.setState({
-        elementCache: this.normalizeFilteredResults(value, elements, 'name'),
-        query: value,
-        focusedIndex: 0
-      }, () => {
-        if (this.state.query) {
-          this.props.onChange && this.props.onChange(value);
-        }
+    if (requestAsync) {
+      if (!this.getElementsForDisplay().length) {
+        nextState = Object.assign({}, nextState, { loading: true });
+      }
+
+      requestAsync(value, () => {
+        this.setState({
+          loading: false
+        });
       });
     } else {
-      filterBy(value);
+      nextState = Object.assign({}, nextState, {
+        elementCache: this.normalizeFilteredResults(value, elements, 'name')
+      });
     }
+
+    this.setState(nextState, () => {
+      if (this.state.query) {
+        this.props.onChange && this.props.onChange(value);
+      }
+    });
   }
 
   normalizeFilteredResults(value, elements, key) {
@@ -230,8 +224,8 @@ class Typeahead extends React.Component {
   }
 
   shouldUseCache() {
-    const { filterBy } = this.props;
-    return (typeof filterBy === 'undefined') ? true : !!filterBy;
+    const { requestAsync } = this.props;
+    return (typeof requestAsync === 'undefined') ? true : !requestAsync;
   }
 
   getElementsForDisplay() {
@@ -330,6 +324,7 @@ class Typeahead extends React.Component {
           selected={ state.selected }
         />
         <SearchResults
+          loading={this.state.loading}
           elements={ elements }
           focusedIndex={ state.focusedIndex }
           onSelect={ this.handleSelect }
