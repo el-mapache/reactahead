@@ -39,6 +39,11 @@ const propTypes = {
   // false when using this component to display a list of results pulled
   // dynamically via API.
   filterBy: React.PropTypes.func,
+  filterResultsFallback: React.PropTypes.oneOfType([
+    React.PropTypes.string,
+    React.PropTypes.number,
+    React.PropTypes.object
+  ]),
   // Text to instruct the user how to interact with component
   helpText: React.PropTypes.string,
   // Whether or not the list of element is visible. If unused,
@@ -96,9 +101,6 @@ class Typeahead extends React.Component {
 
     switch(keyCode) {
       case KeyCodes.ESC:
-        event.preventDefault();
-        this.handleUnfocus();
-        break;
       case KeyCodes.TAB:
         event.preventDefault();
         this.handleUnfocus();
@@ -230,7 +232,11 @@ class Typeahead extends React.Component {
   normalizeFilteredResults(value, elements, key) {
     const filtered = defaultFilter(value, elements, key);
 
-    return (filtered.length && filtered) || [ filterResultsFallback ];
+    return (filtered.length && filtered) || [ this.noResultsFallback() ];
+  }
+
+  noResultsFallback() {
+    return this.props.filterResultsFallback || filterResultsFallback;
   }
 
   shouldUseCache() {
@@ -262,7 +268,15 @@ class Typeahead extends React.Component {
     });
   }
 
+  userSelectsFallbackResult() {
+    return this.getElementsForDisplay()[0] === this.noResultsFallback();
+  }
+
   handleSelect(index) {
+    if (this.userSelectsFallbackResult()) {
+      return;
+    }
+
     const { onSelect } = this.props;
     const item = this.getElementsForDisplay()[index];
     const maybeItemIndex = this.state.selected.indexOf(item);

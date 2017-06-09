@@ -27,6 +27,10 @@ const Fixture = proxyquire('../../src/typeahead', {
 
 const elements = ['tom', 'dick', 'harry'];
 
+const triggerFallbackResult = component => {
+  component.find(SearchBar).prop('onKeyInput')('wombat');
+};
+
 describe('<Typeahead />', () => {
   it('exists as a component', () => {
     expect(shallow(<Fixture />)).to.exist;
@@ -37,6 +41,22 @@ describe('<Typeahead />', () => {
 
     beforeEach(() => {
       component = shallow(<Fixture elements={ elements } />);
+    });
+
+    describe('props options', () => {
+      context('filterResultsFallback', () => {
+        it('allows the developer to set a custom fallback search result', () => {
+          const filterResultsFallback = 'nothing to see here!';
+          const props = {
+            elements,
+            filterResultsFallback
+          };
+
+          component = shallow(<Fixture {...props} />);
+          triggerFallbackResult(component);
+          expect(component.state('elementCache')).to.deep.equal([filterResultsFallback]);
+        });
+      });
     });
 
     it('renders Label, SearchBar, and SearchResults components', () => {
@@ -118,6 +138,15 @@ describe('<Typeahead />', () => {
           component.update();
 
           expectStateToBe(component, 'focusedIndex', 0);
+        });
+
+        it('does not select the fallback element', () => {
+          triggerFallbackResult(component);
+          instance.handleSelect(0);
+          component.update();
+
+          expect(component.state('selected')).to.have.length(0);
+          expect(component.find(SearchResults).prop('elements')).to.have.length(1)
         });
       });
 
