@@ -5,6 +5,7 @@ import Label from './label';
 import SearchBar from './search-bar';
 import SearchResults from './search-results';
 import defaultFilter from './utils/generic-filter';
+import eventFromChildNode from './utils/event-from-child-node';
 
 /**
  * TODO:
@@ -18,9 +19,6 @@ import defaultFilter from './utils/generic-filter';
  * need to make all labels configurable I guess
  * add 'type to search' help text
  * get this into its own repo with css to be included
- *
- * BUGS:
- * User should not be able to select 'no results match that query' fallback
 */
 
 const propTypes = {
@@ -172,32 +170,12 @@ class Typeahead extends React.Component {
   }
 
   handleClick(event) {
-    const findNextParent = (node) => {
-      return node.parentNode;
-    };
-
-    const stop = 10;
-    let count = 0;
-    let next = event.target;
-
-    while(next = findNextParent(next)) {
-      // bail out early, hide the results list
-      if (count === stop) {
-        break;
-      }
-
-      if (next === nodeOf(this)) {
-        // the node emitting the blur event is a child of the parent node,
-        // so we don't want to hide the results list
-        next = null;
-
-        return this.handleInputFocus();
-      } else {
-        count += 1;
-      }
-    }
-
-    this.handleUnfocus();
+    eventFromChildNode(
+      nodeOf(this),
+      event.target,
+      this.handleInputFocus,
+      this.handleUnfocus
+    );
   }
 
   handleKeyInput(value) {
