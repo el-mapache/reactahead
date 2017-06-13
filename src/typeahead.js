@@ -97,22 +97,20 @@ class Typeahead extends React.Component {
   checkKeyCode(event) {
     const { keyCode } = event;
 
+    event.preventDefault();
+
     switch(keyCode) {
       case KeyCodes.ESC:
       case KeyCodes.TAB:
-        event.preventDefault();
         this.handleUnfocus();
         break;
       case KeyCodes.UP:
-        event.preventDefault();
         this.setResultFocus(-1);
         break;
       case KeyCodes.DOWN:
-        event.preventDefault();
         this.setResultFocus(1);
         break;
       case KeyCodes.ENTER:
-        event.preventDefault();
         if (this.state.focusedIndex !== null) {
           this.handleSelect(this.state.focusedIndex);
         }
@@ -246,12 +244,12 @@ class Typeahead extends React.Component {
     });
   }
 
-  userSelectsFallbackResult() {
+  fallbackResultSelected() {
     return this.getElementsForDisplay()[0] === this.noResultsFallback();
   }
 
   handleSelect(index) {
-    if (this.userSelectsFallbackResult()) {
+    if (this.fallbackResultSelected()) {
       return;
     }
 
