@@ -3273,7 +3273,7 @@
 
 /***/ },
 /* 55 */
-[487, 8],
+[489, 8],
 /* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -27112,7 +27112,7 @@
 /* 463 */
 123,
 /* 464 */
-[487, 57],
+[489, 57],
 /* 465 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -29766,7 +29766,7 @@
 
 	var _nodeOf2 = _interopRequireDefault(_nodeOf);
 
-	var _scryWidthOfElement = __webpack_require__(486);
+	var _scryWidthOfElement = __webpack_require__(488);
 
 	var _scryWidthOfElement2 = _interopRequireDefault(_scryWidthOfElement);
 
@@ -30413,7 +30413,7 @@
 
 	var _nodeOf2 = _interopRequireDefault(_nodeOf);
 
-	var _keyCodes = __webpack_require__(485);
+	var _keyCodes = __webpack_require__(486);
 
 	var _keyCodes2 = _interopRequireDefault(_keyCodes);
 
@@ -30429,9 +30429,13 @@
 
 	var _searchResults2 = _interopRequireDefault(_searchResults);
 
-	var _genericFilter = __webpack_require__(484);
+	var _genericFilter = __webpack_require__(485);
 
 	var _genericFilter2 = _interopRequireDefault(_genericFilter);
+
+	var _eventFromChildNode = __webpack_require__(484);
+
+	var _eventFromChildNode2 = _interopRequireDefault(_eventFromChildNode);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -30453,9 +30457,6 @@
 	 * need to make all labels configurable I guess
 	 * add 'type to search' help text
 	 * get this into its own repo with css to be included
-	 *
-	 * BUGS:
-	 * User should not be able to select 'no results match that query' fallback
 	*/
 
 	var propTypes = {
@@ -30474,7 +30475,7 @@
 	  // false when using this component to display a list of results pulled
 	  // dynamically via API.
 	  filterBy: _react2.default.PropTypes.func,
-	  filterResultsFallback: _react2.default.propTypes.oneOfType([_react2.default.PropTypes.string, _react2.default.PropTypes.number, _react2.default.PropTypes.object]),
+	  filterResultsFallback: _react2.default.PropTypes.oneOfType([_react2.default.PropTypes.string, _react2.default.PropTypes.number, _react2.default.PropTypes.object]),
 	  // Text to instruct the user how to interact with component
 	  helpText: _react2.default.PropTypes.string,
 	  // Whether or not the list of element is visible. If unused,
@@ -30542,22 +30543,20 @@
 	      var keyCode = event.keyCode;
 
 
+	      event.preventDefault();
+
 	      switch (keyCode) {
 	        case _keyCodes2.default.ESC:
 	        case _keyCodes2.default.TAB:
-	          event.preventDefault();
 	          this.handleUnfocus();
 	          break;
 	        case _keyCodes2.default.UP:
-	          event.preventDefault();
 	          this.setResultFocus(-1);
 	          break;
 	        case _keyCodes2.default.DOWN:
-	          event.preventDefault();
 	          this.setResultFocus(1);
 	          break;
 	        case _keyCodes2.default.ENTER:
-	          event.preventDefault();
 	          if (this.state.focusedIndex !== null) {
 	            this.handleSelect(this.state.focusedIndex);
 	          }
@@ -30620,32 +30619,7 @@
 	  }, {
 	    key: 'handleClick',
 	    value: function handleClick(event) {
-	      var findNextParent = function findNextParent(node) {
-	        return node.parentNode;
-	      };
-
-	      var stop = 10;
-	      var count = 0;
-	      var next = event.target;
-
-	      while (next = findNextParent(next)) {
-	        // bail out early, hide the results list
-	        if (count === stop) {
-	          break;
-	        }
-
-	        if (next === (0, _nodeOf2.default)(this)) {
-	          // the node emitting the blur event is a child of the parent node,
-	          // so we don't want to hide the results list
-	          next = null;
-
-	          return this.handleInputFocus();
-	        } else {
-	          count += 1;
-	        }
-	      }
-
-	      this.handleUnfocus();
+	      (0, _eventFromChildNode2.default)((0, _nodeOf2.default)(this), event.target, this.handleInputFocus, this.handleUnfocus);
 	    }
 	  }, {
 	    key: 'handleKeyInput',
@@ -30667,7 +30641,7 @@
 	          filterBy = _props.filterBy,
 	          elements = _props.elements;
 
-
+	      console.log('keey');
 	      if (!filterBy) {
 	        this.setState({
 	          elementCache: this.normalizeFilteredResults(value, elements, 'name'),
@@ -30731,12 +30705,18 @@
 	      });
 	    }
 	  }, {
+	    key: 'fallbackResultSelected',
+	    value: function fallbackResultSelected() {
+	      return this.getElementsForDisplay()[0] === this.noResultsFallback();
+	    }
+	  }, {
 	    key: 'handleSelect',
 	    value: function handleSelect(index) {
 	      var _this3 = this;
 
-	      debugger;
-	      if (this.getElementsForDisplay()[0] === this.noResultsFallback()) return;
+	      if (this.fallbackResultSelected()) {
+	        return;
+	      }
 
 	      var onSelect = this.props.onSelect;
 
@@ -30791,7 +30771,7 @@
 	          handleKeyInput = this.handleKeyInput;
 
 	      var elements = this.getElementsForDisplay();
-
+	      console.log('MOTHERFUCKer');
 	      return _react2.default.createElement(
 	        'div',
 	        {
@@ -30839,6 +30819,49 @@
 
 /***/ },
 /* 484 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _nextParentNode = __webpack_require__(487);
+
+	var _nextParentNode2 = _interopRequireDefault(_nextParentNode);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	var eventFromChildNode = function eventFromChildNode(parent, node, fromInsideFn, fromOutsideFn) {
+	  var depth = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 10;
+
+	  var count = 0;
+	  var next = node;
+
+	  while (next = (0, _nextParentNode2.default)(next)) {
+	    // bail out and trigger the fromOutside callback
+	    if (count === depth) {
+	      break;
+	    }
+
+	    if (next === parent) {
+	      // the node emitting the event is a child of the parent node
+	      next = null;
+
+	      return fromInsideFn();
+	    } else {
+	      count += 1;
+	    }
+	  }
+
+	  fromOutsideFn();
+	}; // Determines if a DOM event was fired from a child node of the supplied
+	// DOM node
+	exports.default = eventFromChildNode;
+
+/***/ },
+/* 485 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -30890,7 +30913,7 @@
 	exports.default = defaultFilter;
 
 /***/ },
-/* 485 */
+/* 486 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -30907,7 +30930,22 @@
 	};
 
 /***/ },
-/* 486 */
+/* 487 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var nextParentNode = function nextParentNode(node) {
+	  return node.parentNode;
+	};
+
+	exports.default = nextParentNode;
+
+/***/ },
+/* 488 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -30922,7 +30960,7 @@
 	exports.default = scryWidthOfElement;
 
 /***/ },
-/* 487 */
+/* 489 */
 /***/ function(module, exports, __webpack_require__, __webpack_module_template_argument_0__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
