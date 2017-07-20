@@ -12,6 +12,7 @@ import {
   setState
 } from '../helpers/state-helpers';
 import stubKeyPressEvent from '../helpers/stubs';
+import inputProvider from '../../src/input-provider';
 
 proxyquire.noCallThru();
 
@@ -31,6 +32,11 @@ const triggerFallbackResult = component => {
   component.find(SearchBar).prop('onKeyInput')('wombat');
 };
 
+const wrapperComponent = props => {
+  const C = inputProvider(Fixture);
+  return shallow(<C { ...props } />).dive()
+};
+
 describe('<Typeahead />', () => {
   it('exists as a component', () => {
     expect(shallow(<Fixture />)).to.exist;
@@ -40,7 +46,7 @@ describe('<Typeahead />', () => {
     let component;
 
     beforeEach(() => {
-      component = shallow(<Fixture elements={ elements } />);
+      component = wrapperComponent({elements});
     });
 
     describe('props options', () => {
@@ -52,7 +58,7 @@ describe('<Typeahead />', () => {
             filterResultsFallback
           };
 
-          component = shallow(<Fixture {...props} />);
+          component = wrapperComponent(props);
           triggerFallbackResult(component);
           expect(component.state('elementCache')).to.deep.equal([filterResultsFallback]);
         });
@@ -72,6 +78,7 @@ describe('<Typeahead />', () => {
       expectStateToBe(component, 'resultsListWidth', 100);
     });
 
+    // TODO: test that supplied update function is called
     context('filtering search results', () => {
       it('stores the search query in its own state', () => {
         const query = 'hello';
@@ -121,6 +128,7 @@ describe('<Typeahead />', () => {
           expect(nextResults).to.deep.equal(['dick', 'harry']);
         });
 
+        // TODO: test props
         it('clears the current search query', () => {
           component.setState({query: 'tom'});
           instance.handleSelect(2);
@@ -164,7 +172,7 @@ describe('<Typeahead />', () => {
 
     context('when cache is not set', () => {
       beforeEach(() => {
-        component = shallow(<Fixture elements={elements} filterBy={() => {}}/>);
+        component = wrapperComponent({elements, filterBy: () => {}});
       });
 
       // this sucks, so it will be refactored into separate components
@@ -184,7 +192,7 @@ describe('<Typeahead />', () => {
 
     context('when cache is set', () => {
       beforeEach(() => {
-        component = shallow(<Fixture elements={elements}/>);
+        component = wrapperComponent({elements});
       });
 
       it('passes elements from cache to <SearchResults />', () => {
@@ -204,11 +212,13 @@ describe('<Typeahead />', () => {
   describe('prop callback hooks', () => {
     const onSelectCallbackSpy = spy();
     const onChangeCallbackSpy = spy();
-    const fixture =
-      <Fixture elements={elements}
-        onSelect={onSelectCallbackSpy}
-        onChange={onChangeCallbackSpy} />;
-    const component = shallow(fixture);
+    const props = {
+      elements,
+      onSelect: onSelectCallbackSpy,
+      onChange: onChangeCallbackSpy
+    };
+
+    const component = wrapperComponent(props);
     const instance = component.instance();
 
     it('passes selected item and index to onSelect', () => {
@@ -229,7 +239,7 @@ describe('<Typeahead />', () => {
 
   describe('state', () => {
     it('initializes as with the proper default state', () => {
-      const component = shallow(<Fixture elements={elements} />);
+      const component = wrapperComponent({elements});
       const state = component.state();
 
       expect(state.elementCache).to.deep.equals(elements);
@@ -247,7 +257,7 @@ describe('<Typeahead />', () => {
       let component;
 
       beforeEach(() => {
-        component = shallow(<Fixture elements={ elements } />);
+        component = wrapperComponent({ elements });
       });
 
       describe('onFocus', () => {
@@ -369,7 +379,7 @@ describe('<Typeahead />', () => {
       let component;
 
       beforeEach(() => {
-        component = shallow(<Fixture />);
+        component = wrapperComponent();
       });
 
       describe('onFocus, onBlur', () => {
@@ -408,14 +418,14 @@ describe('<Typeahead />', () => {
     context('<Label/ >', () => {
       it('passes `fieldName` and `labelText` props when supplied', () => {
         const props = { fieldName: 'search', labelText: 'type here!' };
-        const component = shallow(<Fixture {...props} />);
+        const component = wrapperComponent(props);
 
         expect(component.find(Label).props()).to.deep.equals(props);
       });
     });
 
     context('<SearchBar />', () => {
-      const component = shallow(<Fixture />);
+      const component = wrapperComponent({});
       const instance = component.instance();
       const props = {
         doAutoFocus: instance.props.autofocus,
@@ -424,7 +434,7 @@ describe('<Typeahead />', () => {
         onFocus: instance.handleInputFocus,
         onKeyInput: instance.handleKeyInput,
         onUnselect: instance.handleUnselect,
-        query: instance.state.query,
+        query: instance.props.input,
         reportWidth: instance.setResultsListWidth,
         selected: instance.state.selected
       };
