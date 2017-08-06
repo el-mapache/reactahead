@@ -216,13 +216,31 @@ class Typeahead extends React.Component {
 
   shouldUseCache() {
     const { filterBy } = this.props;
-    return (typeof filterBy === 'undefined') ? true : !!filterBy;
+
+    return typeof filterBy === 'function' ? false : true;
   }
 
   getElementsForDisplay() {
     const { selected } = this.state;
-    const rawElements = this.shouldUseCache() ?
-      this.state.elementCache : this.props.elements;
+    let rawElements;
+
+    if (this.shouldUseCache()) {
+      if (this.state.selected.length && !this.props.input) {
+        rawElements = this.props.elements;
+      } else {
+        rawElements = this.state.elementCache;
+      }
+    } else {
+      rawElements = this.props.elements;
+    }
+    // If the user hasn't type a search query, we need to filter down the entire
+    // set of elements again. Likewise if the user is dynamically fetching their
+    // dataset from an external source.
+    // if (!this.shouldUseCache() || !this.props.input) {
+    //   rawElements = this.props.elements
+    // } else {
+    //   rawElements = this.state.elementCache;
+    // }
 
     return rawElements.filter(el => selected.indexOf(el) === -1);
   }
@@ -265,6 +283,7 @@ class Typeahead extends React.Component {
 
     this.setState({
       selected: nextSelectedList,
+      focusedIndex: 0
     }, () => {
       onSelect && onSelect(item, index);
       this.props.handleInput('');

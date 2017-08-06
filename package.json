@@ -6,7 +6,8 @@
   "scripts": {
     "build": "webpack --progress --profile --colors",
     "watch": "webpack --progress --colors --watch",
-    "test": "node_modules/.bin/mocha --compilers js:babel-register"
+    "test": "node_modules/.bin/mocha --compilers js:babel-register",
+    "test-all": "node_modules/.bin/mocha --compilers js:babel-register spec/src"
   },
   "keywords": [],
   "author": "",
