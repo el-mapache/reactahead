@@ -68,7 +68,6 @@ class Typeahead extends React.Component {
       elementCache: this.shouldUseCache() ? elements.slice(0) : null,
       focusedIndex: null,
       inputFocused: false,
-      query: '',
       resultsListWidth: 0,
       showResults: !!visible,
       selected: []
@@ -97,20 +96,22 @@ class Typeahead extends React.Component {
   checkKeyCode(event) {
     const { keyCode } = event;
 
-    event.preventDefault();
-
     switch(keyCode) {
       case KeyCodes.ESC:
       case KeyCodes.TAB:
+        event.preventDefault();
         this.handleUnfocus();
         break;
       case KeyCodes.UP:
+        event.preventDefault();
         this.setResultFocus(-1);
         break;
       case KeyCodes.DOWN:
+        event.preventDefault();
         this.setResultFocus(1);
         break;
       case KeyCodes.ENTER:
+        event.preventDefault();
         if (this.state.focusedIndex !== null) {
           this.handleSelect(this.state.focusedIndex);
         }
@@ -193,12 +194,10 @@ class Typeahead extends React.Component {
     if (!filterBy) {
       this.setState({
         elementCache: this.normalizeFilteredResults(value, elements, 'name'),
-        query: value,
         focusedIndex: 0
       }, () => {
-        if (this.state.query) {
-          this.props.onChange && this.props.onChange(value);
-        }
+        this.props.handleInput(value);
+        this.props.onChange && this.props.onChange(value);
       });
     } else {
       filterBy(value);
@@ -217,13 +216,31 @@ class Typeahead extends React.Component {
 
   shouldUseCache() {
     const { filterBy } = this.props;
-    return (typeof filterBy === 'undefined') ? true : !!filterBy;
+
+    return typeof filterBy === 'function' ? false : true;
   }
 
   getElementsForDisplay() {
     const { selected } = this.state;
-    const rawElements = this.shouldUseCache() ?
-      this.state.elementCache : this.props.elements;
+    let rawElements;
+
+    if (this.shouldUseCache()) {
+      if (this.state.selected.length && !this.props.input) {
+        rawElements = this.props.elements;
+      } else {
+        rawElements = this.state.elementCache;
+      }
+    } else {
+      rawElements = this.props.elements;
+    }
+    // If the user hasn't type a search query, we need to filter down the entire
+    // set of elements again. Likewise if the user is dynamically fetching their
+    // dataset from an external source.
+    // if (!this.shouldUseCache() || !this.props.input) {
+    //   rawElements = this.props.elements
+    // } else {
+    //   rawElements = this.state.elementCache;
+    // }
 
     return rawElements.filter(el => selected.indexOf(el) === -1);
   }
@@ -266,9 +283,10 @@ class Typeahead extends React.Component {
 
     this.setState({
       selected: nextSelectedList,
+      focusedIndex: 0
     }, () => {
       onSelect && onSelect(item, index);
-      this.handleKeyInput('');
+      this.props.handleInput('');
     });
   }
 
@@ -288,9 +306,8 @@ class Typeahead extends React.Component {
   handleUnfocus() {
     this.setState({
       inputFocused: false,
-      showResults: false,
-      query: ''
-    });
+      showResults: false
+    }, () => this.props.handleInput(''));
   }
 
   render() {
@@ -312,9 +329,9 @@ class Typeahead extends React.Component {
           isFocused={ state.inputFocused }
           name={ this.props.fieldName || defaultSearchName }
           onFocus={ this.handleInputFocus }
-          onKeyInput={ handleKeyInput }
+          onKeyInput={ this.handleKeyInput }
           onUnselect={this.handleUnselect}
-          query={ this.state.query }
+          query={ this.props.input }
           reportWidth={ this.setResultsListWidth }
           selected={ state.selected }
         />
